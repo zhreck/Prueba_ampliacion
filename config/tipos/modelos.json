@@ -34,6 +34,18 @@
     "NOM_CODIGO_CEBE"
   ],
 
+  "_reference_by_filial_nota": "ZMAQ (VC00/VD00/VE00) no amplía por fabricante: siempre expande a la misma lista fija de centros de esa filial (ver docs/mapeo_filiales.json). VD00/VE00 quedan sin entrada hasta tener su propia tabla centro->cebe confirmada; si llega un input con esas filiales sin entrada aquí, el motor usa las reglas por defecto de arriba (modelos_centros_ampliacion.xlsx) y probablemente no matcheará nada útil.",
+  "reference_by_filial": {
+    "VC00": {
+      "reference_file": "data/reference/centros_cebe_vc00.xlsx",
+      "reference_sheet": null,
+      "key_reference": null,
+      "fallback_value": null,
+      "expandir_todos": true,
+      "output_columns_from_reference": ["CENTRO", "COD_CEBE"]
+    }
+  },
+
   "correlativo": {
     "enabled": true,
     "nombre": "material_global",

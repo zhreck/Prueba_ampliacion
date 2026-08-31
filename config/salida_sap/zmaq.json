@@ -1,267 +1,46 @@
 {
-  "_descripcion": "Plantilla SAP para tipo ZMAQ (Maquinarias) - filiales VC00, VD00, VE00",
-  "_nota": "Configuración-driven. Todos los valores fijos y mapeos están en este JSON. No hay lógica hardcodeada por filial en Python.",
-  
+  "_descripcion": "Plantilla SAP para tipo ZMAQ (Maquinarias) - filiales VC00, VD00, VE00. Comparten esta misma plantilla y el mismo rango de número de material (docs/mapeo_filiales.json).",
+  "_nota": "Config-driven: acá solo van (a) mapeos de columnas ya ampliadas -> columnas SAP y (b) valores evidenciados en un ejemplo de salida real. Los defaults confirmados por negocio viven en docs/confirmacion_campos_parsed.json (bloque ZMAQ_ttm) y las reglas universales (Transaccion, Material, Org. Ventas, Jerarquía SD) están en salida_sap.py, no acá.",
+
   "tipo_material": "ZMAQ",
   "bloque_confirmacion_sap": "ZMAQ_ttm",
-  "transaccion": "ttm",
   "rango_correlativo_nombre": "zmaq_material",
-  
-  "mapeos": {
-    "Transaccion": {
-      "from": "Transaccion",
-      "default": "ttm"
-    },
-    "Material": {
-      "from": "numero_sap",
-      "description": "Asignado por correlativo.siguiente_numero()"
-    },
-    "Ramo": {
-      "from": "Ramo",
-      "default": "T"
-    },
-    "Tipo material": {
-      "from": "Tipo material",
-      "default": "ZMAQ"
-    },
-    "Centro": {
-      "from": "CENTRO"
-    },
-    "Almacén": {
-      "from": "Almacen",
-      "default": ""
-    },
-    "Clase de valoración": {
-      "from": "clase_valoracion",
-      "default": ""
-    },
-    "Org. Ventas": {
-      "from": "ORG_VENTAS",
-      "description": "Repetir para cada Org. Vtas (según dynamic_rules)"
-    },
-    "Canal distribución": {
-      "from": "CANAL_DISTRIBUCION",
-      "description": "Repetir para cada Canal (según dynamic_rules)"
-    },
-    "Unidad medida base": {
-      "from": "Unidad medida base",
-      "default": "UN"
-    },
-    "Texto breve material (40)": {
-      "from": "TEXTO BREVE"
-    },
-    "Grupo de artículos": {
-      "from": "GRUPO ARTICULO"
-    },
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": {
-      "from": "JERARQUIA"
-    },
-    "Sector": {
-      "from": "Sector",
-      "default": "10"
-    },
-    "Jerarquía de productos SD\nMVKE-PRODH": {
-      "from": "JERARQUIA",
-      "description": "Mismo valor que MARA-PRDHA (duplicado)"
-    },
-    "Gr.estadística mat.": {
-      "from": "Gr.estadistica",
-      "default": "1"
-    },
-    "Clasificación Fiscal para el materi": {
-      "from": "clasificacion_fiscal",
-      "default": "1",
-      "note": "Temporalmente hardcodeado. Requiere lookup según país."
-    },
-    "Grupo tipos posición": {
-      "from": "grupo_tipos_posicion",
-      "default": "VMS0"
-    },
-    "Grupo tipos posición gral": {
-      "from": "grupo_tipos_posicion_gral",
-      "default": "VMS0"
-    },
-    "Gr.imputación mat.": {
-      "from": "grupo_imputacion",
-      "note": "Pendiente de lookup - Validar Valores"
-    },
-    "Grupo de transporte": {
-      "from": "grupo_transporte",
-      "default": "0001"
-    },
-    "Grupo de carga": {
-      "from": "grupo_carga",
-      "default": "0001"
-    },
-    "verificación de disponibilidad": {
-      "from": "verificacion_disponibilidad",
-      "default": "KP"
-    },
-    "Grupo materiales 1": {
-      "from": "MARCA CODIGO",
-      "note": "Listado de Marcas - hoy mapeamos MARCA CODIGO"
-    },
-    "Centro de beneficio": {
-      "from": "COD_CEBE",
-      "note": "Vinculado desde tabla de referencia centro->cebe"
-    },
-    "Grupo de compras": {
-      "from": "grupo_compras",
-      "default": "T03",
-      "note": "Pendiente de lookup - Validar Listado de Grupos de Compra"
-    },
-    "Sujeto-lote": {
-      "from": "sujeto_lote",
-      "default": "X"
-    },
-    "Condición Almacenaje": {
-      "from": "condicion_almacenaje",
-      "default": "UN",
-      "note": "AN(Animales) RP(Repuestos) UN(Unidades)"
-    },
-    "Sujeto a Lote": {
-      "from": "sujeto_a_lote",
-      "default": "X"
-    },
-    "Tipo de valoración": {
-      "from": "tipo_valoracion",
-      "default": "X"
-    },
-    "Control de precios": {
-      "from": "control_precios",
-      "default": "V"
-    },
-    "Categoría valoración": {
-      "from": "NOMBRE FABRICANTE",
-      "note": "Temporalmente usando NOMBRE FABRICANTE. Pendiente de lookup - Definir Categorías"
-    },
-    "Tipo de MRP": {
-      "from": "tipo_mrp",
-      "default": "ND"
-    },
-    "Precio Variable": {
-      "from": "precio_variable",
-      "note": "Pendiente de lookup o input adicional"
-    },
-    "Fabricante": {
-      "from": "FABRICANTE CODIGO"
-    },
-    "Número de Pieza de Fabricante (NPF)": {
-      "from": "NPF:Fabricante"
-    },
-    "Unidad med.salida": {
-      "from": "unidad_medida_salida",
-      "default": "UN"
-    },
-    "Perfil Pieza de Fabricante": {
-      "from": "perfil_pieza",
-      "default": "ZMP1"
-    },
-    "Clasificación Fiscal para el material ZMWS": {
-      "from": "clasificacion_zmws",
-      "default": "0",
-      "note": "Valor por defecto ZMWS según país"
-    },
-    "Unidad medida pedido": {
-      "from": "unidad_medida_pedido",
-      "default": "UN"
-    },
-    "Punto de pedido": {
-      "from": "punto_pedido",
-      "default": ""
-    },
-    "Stock de seguridad": {
-      "from": "stock_seguridad",
-      "default": ""
-    }
+
+  "campos_desde_ampliado": {
+    "Centro": "CENTRO",
+    "Texto breve material (40)": "TEXTO BREVE",
+    "Grupo de artículos": "GRUPO ARTICULO",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
+    "Fabricante": "FABRICANTE CODIGO",
+    "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
+    "Centro de beneficio": "COD_CEBE"
   },
 
-  "campos_siempre_vacios": [
-    "Nº antiguo material",
-    "Unidad de Medida Alternativa (UMA)",
-    "Denominador UMA",
-    "Numerador UMA",
-    "Número de artículo Europeo",
-    "Tipo de número del Numero de artículo Europeo",
-    "Peso bruto",
-    "Peso neto",
-    "Unidad de peso",
-    "Volumen",
-    "Unidad de volumen",
-    "Tamaño0Dimensión",
-    "Gpo.tipos pos.gral.",
-    "Gpo. Materiales ME",
-    "Un.medida venta",
-    "UMV no variable",
-    "Centro de suministro",
-    "Derecho a descuento",
-    "Grupo de comisión",
-    "Grupo de materiales",
-    "Atributo 1", "Atributo 2", "Atributo 3", "Atributo 4", "Atributo 5", "Atributo 6", "Atributo 7", "Atributo 8", "Atributo 9", "Atributo 10",
-    "Clase Condición 1",
-    "Perfil Número de Serie",
-    "Grupo de porte del material",
-    "Clave-valores-comp",
-    "Tmpo.tratamiento EM",
-    "Ident.impuest.mat.",
-    "Perfil Número de Serie",
-    "Ubicación",
-    "Cantidad base",
-    "Determinación Precio",
-    "Precio estándar 1",
-    "Tamaño de lote del cálculo del coste del producto",
-    "Caract.planif.nec",
-    "Planificador de necesidades",
-    "Plazo de entrega previsto en días",
-    "Tamaño de Lote",
-    "Grupo de estrategias",
-    "Grupo de planificación de necesidades",
-    "Almacén de producción",
-    "Clase aprovisionam.",
-    "Aprovis.especial",
-    "Valor Redondeo",
-    "Horiz.planif.fijo",
-    "Co-Producto",
-    "Responsable de control de producción",
-    "Perfil ctrl.fabric.",
-    "Almacen Aprov Externo",
-    "Grupo Estrategias",
-    "Modo de Consumo",
-    "Intv Compens adelante",
-    "Intv Compens atrás",
-    "Neces. Idiv. Colectiva",
-    "C.Esructura Cuantitativa",
-    "Origen Material",
-    "Contabilizar en stock en insp.calidad",
-    "Datos Basicos.1", "Datos Basicos.2",
-    "Vista PrepTrabajo.1", "Vista contabilidad", "Vista planif.nec. 1", "Vista Planif-Neces 2",
-    "Vista compras", "Vista tx.ped.comp.",
-    "Vista Datos Gral Centro almacenamiento 1", "Vista Datos Gral Centro almacenamiento 2",
-    "Vista pronósticos", "Vista ventas 1", "Vista ventas 2", "Vista texto-ventas",
-    "Vista ventas Centro", "Vista medios aux. de", "Vista calidad", "Vista Cálc. costes",
-    "Vista clasificación", "Vista pr-trbj. 2", "Vista PlanNeces3", "Vista PlanNeces4",
-    "Vista Ejecución WM", "Vista comercio ext."
-  ],
-
-  "centros_cebe_vcoo": {
-    "_nota": "Mapeo centro->COD_CEBE para VC00. Extraído del ejemplo_output_ZMAQ_VC00.xlsx",
-    "VC00": "VCLN02QCHY",
-    "VC01": "VCLN02CAHY",
-    "VC02": "VCLN02ANHY",
-    "VC04": "VCLN02CUHY",
-    "VC05": "VCLN02TAHY",
-    "VC06": "VCLN02PMHY",
-    "VC07": "VCLN02OSHY"
+  "_defaults_confirmados_extra_nota": "Extraídos de docs/ejemplo_output_ZMAQ_VC00.xlsx (70 filas, salida real ya usada en producción). confirmacionCampos.xlsx deja estas celdas en blanco/sin confirmar formalmente, pero el output real siempre las trae así, así que se asumen como el comportamiento esperado para ZMAQ. Sin evidencia equivalente todavía para VD00/VE00: se aplican igual porque comparten plantilla, pero falta que negocio lo confirme explícitamente si alguna vez difiere.",
+  "defaults_confirmados_extra": {
+    "Sector": "10",
+    "Sujeto-lote": "X",
+    "Canal distribución": "30",
+    "Perfil Pieza de Fabricante": "ZMP1",
+    "Datos Basicos.1": "X ",
+    "Datos Basicos.2": "X ",
+    "Vista contabilidad": "X ",
+    "Vista compras": "X ",
+    "Vista tx.ped.comp.": "X ",
+    "Vista Datos Gral Centro almacenamiento 1": "X ",
+    "Vista Datos Gral Centro almacenamiento 2": "X ",
+    "Vista ventas 1": "X ",
+    "Vista ventas 2": "X ",
+    "Vista texto-ventas": "X ",
+    "Vista ventas Centro": "X ",
+    "Vista clasificación": "X"
   },
+
+  "pendientes_extra": ["Precio Variable"],
 
   "notas_pendientes": [
-    "VC03 y VC08 no aparecen en el ejemplo - falta confirmar su COD_CEBE",
-    "VD00 y VE00: Sin tabla de referencia centro->cebe todavía",
-    "Clasificación Fiscal: Temporalmente hardcodeado a '1'. Requiere lookup por país.",
-    "Gr.imputación mat.: Requiere validación de valores desde tabla de referencia",
-    "Grupo materiales 1: Hoy usa MARCA CODIGO, pero es 'Listado de Marcas' - revisar",
-    "Grupo de compras: Hardcodeado a 'T03', requiere validar listado",
-    "Categoría valoración: Hoy usa NOMBRE FABRICANTE, requiere definición de categorías",
-    "Precio Variable: Requiere input adicional o lookup"
+    "Centro->Cebe: solo hay tabla de referencia real para VC00 (data/reference/centros_cebe_vc00.xlsx: VC00,VC01,VC02,VC04,VC05,VC06,VC07). VC03 y VC08 no aparecen en el ejemplo. VD00 y VE00 no tienen tabla propia todavía — un input con esas filiales usará la config general (probablemente sin match) hasta que se agregue su entrada en config/tipos/modelos.json -> reference_by_filial.",
+    "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES. El ejemplo real trae valores para varios de estos (ej. Grupo de compras='Q03', Categoría valoración=1410) pero son datos históricos de UN material puntual, no una regla general confirmada por negocio.",
+    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal en salida_sap.py), evidenciado solo con VC00. Si alguna filial de ZMAQ tuviera una Org. Ventas distinta de su propio código, avisar para ajustar."
   ]
 }

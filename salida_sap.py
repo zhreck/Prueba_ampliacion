@@ -1,18 +1,48 @@
 """
 Conversión de datos ampliados a formato SAP MM01 (transacción de creación de materiales).
 
-Toma el resultado de engine.procesar() (fila ampliada a N centros) y lo convierte
-a las ~150 columnas del formato SAP real, aplicando plantillas por filial/tipo de material.
+Toma el resultado de engine.procesar() (fila ya ampliada a N centros) y lo convierte
+a las 151 columnas del formato SAP real, aplicando plantillas por filial/tipo de material.
 
-Las plantillas están en config/salida_sap/*.json y contienen:
-- Valores defaults (fijos por filial)
-- Reglas dinámicas (mapeo de columnas input -> columnas SAP)
-- Campos pendientes de lookup
+Fuentes de verdad (no se inventan valores fuera de estas):
+- docs/header_151_columnas.json: orden y nombres exactos de columnas (incluye nombres
+  repetidos a propósito — así es el layout real de SAP, con grupos de columnas que
+  comparten etiqueta, ej. 3 slots de "Unidad de Medida Alternativa (UMA)"). Por eso
+  las filas se arman POSICIONALMENTE (por índice), no por diccionario: un dict no
+  puede tener dos claves iguales y perdería la distinción entre esas columnas.
+- docs/confirmacion_campos_parsed.json: matriz de negocio confirmada, por bloque de
+  filial. "defaults" son valores fijos confirmados. "needs_review_or_lookup" son
+  campos que el negocio todavía no resolvió — esos se dejan en blanco y se listan en
+  la hoja PENDIENTES, nunca se inventa un valor SAP para ellos.
+- config/salida_sap/<filial>.json: qué columnas de la fila ya ampliada van a qué
+  columna SAP (config-driven, sin lógica por filial hardcodeada en Python), más un
+  puñado de valores "defaults_confirmados_extra" evidenciados en un ejemplo de
+  salida real (docs/ejemplo_output_ZMAQ_VC00.xlsx) que no estaban en la matriz de
+  confirmación pero sí en el output real ya usado en producción.
+
+Reglas universales (no dependen de la plantilla, aplican siempre):
+- "Transaccion" = "MM01" para toda fila. Los nombres "tau"/"ttm"/"tti"/"ttmq"/"mtt"
+  que aparecen en confirmacion_campos_parsed.json NO son el valor del campo: son la
+  etiqueta interna de cada bloque/sub-tipo dentro de confirmacionCampos.xlsx. Esto se
+  confirma con el propio Excel (fila de ZCAM dice literalmente
+  'Obligatorio\\nValor por defecto "MM01"'), con la vista SQL histórica
+  (docs/material_formato_sap_ttm.sql, 'MM01' AS TRANSACCION) y con el ejemplo real
+  de ZMAQ/VC00 (columna Transaccion = 'MM01' en las 70 filas).
+- "Material" = número asignado por correlativo.siguiente_numero() del rango de la
+  filial/tipo de material.
+- "Org. Ventas" = el código de FILIAL CODIGO de la fila ampliada (evidenciado en el
+  ejemplo real: Org. Ventas es 'VC00' constante para todos los centros VC00..VC07,
+  es decir la organización de ventas "propia" de la filial, no el centro expandido).
+- "Jerarquía de productos SD\\nMVKE-PRODH" = mismo valor que
+  "Jerarquía productos\\n MARA-PRDHA\\nReplicar en\\nMVKE-PRODH". Esto SÍ está resuelto
+  en confirmacion_campos_parsed.json (nota: "Tomar el dato que se registró en
+  MARA-PRDHA"), aunque el parser lo haya agrupado bajo needs_review_or_lookup.
 """
 
 import json
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
+
 import pandas as pd
 
 import correlativo
@@ -22,12 +52,37 @@ CONFIG_DIR = BASE_DIR / "config" / "salida_sap"
 HEADER_PATH = BASE_DIR / "docs" / "header_151_columnas.json"
 CONFIRMACION_PATH = BASE_DIR / "docs" / "confirmacion_campos_parsed.json"
 
+COL_TRANSACCION = "Transaccion"
+COL_MATERIAL = "Material"
+COL_ORG_VENTAS = "Org. Ventas"
+COL_JERARQUIA_MARA = "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH"
+COL_JERARQUIA_SD = "Jerarquía de productos SD\nMVKE-PRODH"
+
+TRANSACCION_VALOR = "MM01"
+
+# Filiales que ya tienen tipo de material y plantilla configurados. ZUSA queda
+# fuera a propósito (fuera de alcance, ver docs/mapeo_filiales.json).
+FILIAL_A_TIPO_MATERIAL = {
+    "VF00": "ZVHE",
+    "VA00": "ZCAM",
+    "VC00": "ZMAQ",
+    "VD00": "ZMAQ",
+    "VE00": "ZMAQ",
+}
+
+TIPO_MATERIAL_A_CONFIG = {
+    "ZVHE": "zvhe.json",
+    "ZMAQ": "zmaq.json",
+    "ZCAM": "zcam.json",
+}
+
+
 class FormatoSAPError(Exception):
     pass
 
 
 def cargar_header_151() -> List[str]:
-    """Carga la lista de 151 nombres de columnas SAP en orden exacto."""
+    """Carga la lista de 151 nombres de columnas SAP, en orden exacto y CON duplicados."""
     with open(HEADER_PATH, encoding="utf-8") as fh:
         return json.load(fh)
 
@@ -39,235 +94,213 @@ def cargar_confirmacion_sap() -> dict:
 
 
 def cargar_plantilla_sap(tipo_material: str) -> dict:
-    """
-    Carga la plantilla SAP para un tipo de material.
-    
-    Args:
-        tipo_material: Tipo de material SAP (ZVHE, ZMAQ, ZCAM)
-    
-    Returns:
-        Diccionario con la plantilla de configuración
-        
-    Raises:
-        FormatoSAPError: Si la plantilla no existe o hay problemas
-    """
-    # Mapear tipo material a archivo de config
-    tipo_a_config = {
-        "ZVHE": "zvhe.json",
-        "ZMAQ": "zmaq.json",
-        "ZCAM": "zcam.json",
-    }
-    
-    config_file = tipo_a_config.get(tipo_material)
+    config_file = TIPO_MATERIAL_A_CONFIG.get(tipo_material)
     if not config_file:
         raise FormatoSAPError(f"Tipo material '{tipo_material}' no tiene plantilla SAP configurada.")
-    
+
     path = CONFIG_DIR / config_file
     if not path.exists():
         raise FormatoSAPError(f"Archivo de plantilla no encontrado: {path}")
-    
+
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def filial_a_tipo_material(filial: str) -> str:
     """Mapea código de filial a tipo de material SAP."""
-    mapeo = {
-        "VF00": "ZVHE",
-        "VA00": "ZCAM",
-        "VC00": "ZMAQ",
-        "VD00": "ZMAQ",
-        "VE00": "ZMAQ",
-    }
-    
-    tipo = mapeo.get(filial)
+    tipo = FILIAL_A_TIPO_MATERIAL.get(filial)
     if not tipo:
         raise FormatoSAPError(
             f"Filial '{filial}' no tiene mapeo a tipo de material SAP. "
-            f"Filiales soportadas: {list(mapeo.keys())}"
+            f"Filiales soportadas: {list(FILIAL_A_TIPO_MATERIAL.keys())}"
         )
     return tipo
+
+
+def _primeras_ocurrencias(header: List[str]) -> Dict[str, int]:
+    """Índice de la PRIMERA posición de cada nombre de columna en el header.
+
+    El header tiene nombres repetidos a propósito (así es el layout real de SAP).
+    Toda vez que este módulo escribe un valor "por nombre", lo hace en la primera
+    ocurrencia; las ocurrencias siguientes del mismo nombre quedan en blanco, que es
+    exactamente el patrón observado en docs/ejemplo_output_ZMAQ_VC00.xlsx (ej.
+    'Centro de beneficio' solo trae valor en su primera aparición, la segunda
+    siempre viene vacía en las 70 filas del ejemplo).
+    """
+    primeras = {}
+    for i, nombre in enumerate(header):
+        if nombre not in primeras:
+            primeras[nombre] = i
+    return primeras
+
+
+def _valor_texto(v) -> str:
+    if v is None:
+        return ""
+    try:
+        if pd.isna(v):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    return str(v)
 
 
 def aplicar_plantilla_sap(
     df_ampliado: pd.DataFrame,
     tipo_material: str,
-    centro_cebe_lookup: Optional[Dict] = None,
 ) -> Tuple[pd.DataFrame, Dict]:
     """
-    Convierte un DataFrame ampliado al formato SAP MM01.
-    
+    Convierte un DataFrame ampliado al formato SAP MM01 (151 columnas, en el orden
+    y con los nombres exactos de docs/header_151_columnas.json).
+
     Args:
-        df_ampliado: DataFrame con las filas ya ampliadas a N centros (output de engine.procesar())
-        tipo_material: Tipo de material SAP (ZVHE, ZMAQ, ZCAM)
-        centro_cebe_lookup: Dict opcional {centro: cod_cebe} para mapeo de centros a CEBE
-    
+        df_ampliado: filas ya ampliadas a N centros (salida de engine.procesar()).
+        tipo_material: ZVHE, ZMAQ o ZCAM.
+
     Returns:
-        Tupla (DataFrame de 151 columnas en formato SAP, diccionario de metadatos)
-    
-    Raises:
-        FormatoSAPError: Si hay problemas de configuración
+        (DataFrame de 151 columnas, metadatos con pendientes/avisos)
     """
-    
-    # Cargar configuraciones
     plantilla = cargar_plantilla_sap(tipo_material)
     header = cargar_header_151()
+    primeras = _primeras_ocurrencias(header)
     confirmacion = cargar_confirmacion_sap()
-    
-    # Determinar qué bloque de la confirmación usar
+
     bloque_key = plantilla.get("bloque_confirmacion_sap")
     if not bloque_key:
         raise FormatoSAPError(f"Plantilla de {tipo_material} no especifica 'bloque_confirmacion_sap'")
-    
+
     bloque = confirmacion.get(bloque_key)
     if not bloque:
         raise FormatoSAPError(f"Bloque '{bloque_key}' no encontrado en confirmacion_campos_parsed.json")
-    
-    # Validar que el rango de material esté configurado
+
     rango_corr_nombre = plantilla.get("rango_correlativo_nombre")
-    if "_PENDIENTE" in rango_corr_nombre:
+    if not rango_corr_nombre or "PENDIENTE" in rango_corr_nombre:
         raise FormatoSAPError(
-            f"PENDIENTE: Rango de material para {tipo_material} no está confirmado. "
-            f"Seba debe entregar: rango_min y rango_max para {rango_corr_nombre}"
+            f"PENDIENTE: el rango de número de material para {tipo_material} no está "
+            f"confirmado todavía (rango_correlativo_nombre='{rango_corr_nombre}'). "
+            f"No se puede generar el formato SAP para esta filial hasta tener el rango real."
         )
-    
-    # Obtener transacción
-    transaccion = plantilla.get("transaccion", "MM01")
-    
-    # Resultado: lista de filas SAP
-    resultado = []
-    numeros_asignados = {}  # Para tracking
-    
-    # Procesar cada material (agrupar por NUMERO MATERIAL interno)
+    # Falla fuerte y explícita si el rango no quedó registrado en correlativo.py.
+    correlativo.obtener_rango(rango_corr_nombre)
+
+    campos_pendientes = _calcular_campos_pendientes(bloque, plantilla)
+
+    if "FILIAL CODIGO" not in df_ampliado.columns:
+        raise FormatoSAPError("La fila ampliada no tiene columna 'FILIAL CODIGO'; no se puede resolver Org. Ventas.")
+
+    resultado_filas = []
+    numeros_asignados = {}
+
     for material_idx, grupo in df_ampliado.groupby("NUMERO MATERIAL", sort=False):
-        # Obtener el número de material SAP del correlativo
         try:
             numero_sap = correlativo.siguiente_numero(rango_corr_nombre)
         except correlativo.RangoNoConfiguradoError as e:
-            raise FormatoSAPError(f"Error de correlativo para {tipo_material}: {e}")
+            raise FormatoSAPError(f"Error de correlativo para {tipo_material}: {e}") from e
         except correlativo.RangoAgotadoError as e:
-            raise FormatoSAPError(f"Rango agotado para {tipo_material}: {e}")
-        
-        # Procesar cada fila del grupo (todas comparten número SAP)
+            raise FormatoSAPError(f"Rango agotado para {tipo_material}: {e}") from e
+
+        numeros_asignados[str(material_idx)] = numero_sap
+
         for _, row in grupo.iterrows():
-            fila_sap = generar_fila_sap(
-                row=row,
-                plantilla=plantilla,
-                bloque=bloque,
-                header=header,
-                numero_material=numero_sap,
-                transaccion=transaccion,
-                centro_cebe_lookup=centro_cebe_lookup
+            resultado_filas.append(
+                _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes)
             )
-            resultado.append(fila_sap)
-        
-        numeros_asignados[material_idx] = numero_sap
-    
-    # Crear DataFrame con columnas en orden exacto
-    df_sap = pd.DataFrame(resultado)
-    
-    # Asegurar que todas las 151 columnas estén presentes en orden exacto
-    columnas_ordenadas = [col for col in header if col in df_sap.columns]
-    columnas_extras = [col for col in df_sap.columns if col not in header]
-    df_sap = df_sap[columnas_ordenadas + columnas_extras]
-    
-    # Preparar metadatos de pendientes y gaps
+
+    df_sap = pd.DataFrame(resultado_filas, columns=header)
+
     metadatos = {
         "tipo_material": tipo_material,
         "bloque": bloque_key,
-        "transaccion": transaccion,
+        "transaccion": TRANSACCION_VALOR,
         "total_filas": len(df_sap),
         "numeros_asignados": numeros_asignados,
-        "campos_pendientes": list(bloque.get("needs_review_or_lookup", {}).keys()),
-        "columnas_vacias": identificar_columnas_vacias(df_sap, header),
-        "columnas_totales": len(header),
+        "campos_pendientes": campos_pendientes,
+        "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, bloque, primeras),
     }
-    
+
     return df_sap, metadatos
 
 
-def generar_fila_sap(
+def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]:
+    """
+    Campos que quedan en blanco a propósito porque el negocio todavía no dio una
+    regla, con el motivo. Nunca se rellenan con un valor inventado.
+    """
+    pendientes = {}
+    resueltos_aparte = {COL_TRANSACCION, COL_MATERIAL, COL_JERARQUIA_SD}
+    for campo, nota in bloque.get("needs_review_or_lookup", {}).items():
+        if campo in resueltos_aparte:
+            continue
+        pendientes[campo] = nota
+
+    for campo in plantilla.get("pendientes_extra", []):
+        pendientes.setdefault(campo, "Obligatorio sin regla confirmada (no evidenciado en un ejemplo real de esta filial).")
+
+    return pendientes
+
+
+def _generar_fila_sap(
     row: pd.Series,
     plantilla: dict,
     bloque: dict,
     header: List[str],
+    primeras: Dict[str, int],
     numero_material: int,
-    transaccion: str,
-    centro_cebe_lookup: Optional[Dict] = None
-) -> Dict:
-    """
-    Convierte una fila ampliada a una fila SAP completa (151 columnas).
-    
-    Args:
-        row: Serie de pandas con los datos ampliados
-        plantilla: Configuración de la plantilla SAP
-        bloque: Bloque de confirmación (defaults, dynamic_rules, needs_review_or_lookup)
-        header: Lista de 151 nombres de columnas SAP
-        numero_material: Número de material asignado del correlativo
-        transaccion: Código de transacción SAP
-        centro_cebe_lookup: Dict opcional para mapear Centro -> COD_CEBE
-    
-    Returns:
-        Diccionario con todas las 151 columnas completadas
-    """
-    fila_sap = {}
-    
-    # 1. Inicializar todas las columnas con vacío
-    for col in header:
-        fila_sap[col] = ""
-    
-    # 2. Aplicar valores por defecto del bloque
-    defaults = bloque.get("defaults", {})
-    for col, valor in defaults.items():
-        if col in fila_sap:
-            fila_sap[col] = valor
-    
-    # 3. Asignar transacción y número de material
-    fila_sap["Transaccion"] = transaccion
-    if "Material" in fila_sap:
-        fila_sap["Material"] = str(numero_material)
-    
-    # 4. Aplicar mapeos definidos en la plantilla
-    mapeos = plantilla.get("mapeos", {})
-    for col_sap, config_mapeo in mapeos.items():
-        if col_sap not in fila_sap:
+    campos_pendientes: Dict[str, str],
+) -> List[str]:
+    fila = [""] * len(header)
+
+    def set_valor(nombre_columna: str, valor) -> None:
+        if valor is None:
+            return
+        idx = primeras.get(nombre_columna)
+        if idx is None:
+            return
+        texto = _valor_texto(valor)
+        if texto == "":
+            return
+        fila[idx] = texto
+
+    # 1) Defaults confirmados por negocio (confirmacion_campos_parsed.json).
+    for campo, valor in bloque.get("defaults", {}).items():
+        set_valor(campo, valor)
+
+    # 2) Defaults extra evidenciados en un ejemplo real de esta filial (config-driven).
+    for campo, valor in plantilla.get("defaults_confirmados_extra", {}).items():
+        set_valor(campo, valor)
+
+    # 3) Columnas que vienen directo de la fila ya ampliada (mapeo config-driven).
+    for col_sap, col_ampliado in plantilla.get("campos_desde_ampliado", {}).items():
+        if col_ampliado in row.index:
+            set_valor(col_sap, row[col_ampliado])
+
+    # 4) Campos pendientes de negocio: se dejan explícitamente en blanco, aunque
+    #    algún paso anterior haya intentado poner algo (nunca se inventa un valor).
+    for campo in campos_pendientes:
+        idx = primeras.get(campo)
+        if idx is not None:
+            fila[idx] = ""
+
+    # 5) Reglas universales, siempre pisan lo anterior.
+    set_valor(COL_TRANSACCION, TRANSACCION_VALOR)
+    set_valor(COL_MATERIAL, numero_material)
+    if "FILIAL CODIGO" in row.index:
+        set_valor(COL_ORG_VENTAS, row["FILIAL CODIGO"])
+    idx_jerarquia_mara = primeras.get(COL_JERARQUIA_MARA)
+    if idx_jerarquia_mara is not None:
+        set_valor(COL_JERARQUIA_SD, fila[idx_jerarquia_mara])
+
+    return fila
+
+
+def _obligatorios_vacios(df: pd.DataFrame, header: List[str], bloque: dict, primeras: Dict[str, int]) -> List[str]:
+    """De la lista de 'obligatorios' del bloque, cuáles quedaron vacíos en TODAS las filas."""
+    vacios = []
+    for campo in bloque.get("obligatorios", []):
+        idx = primeras.get(campo)
+        if idx is None:
             continue
-        
-        # Ignorar campos meta
-        if config_mapeo == {"from": "numero_sap", "description": "Asignado por correlativo.siguiente_numero()"}:
-            continue
-        
-        if isinstance(config_mapeo, dict):
-            # Mapeo complejo
-            col_input = config_mapeo.get("from")
-            default_val = config_mapeo.get("default")
-            
-            if col_input and col_input in row.index:
-                fila_sap[col_sap] = str(row[col_input])
-            elif default_val is not None:
-                fila_sap[col_sap] = default_val
-        else:
-            # Mapeo simple: nombre de columna como string
-            if config_mapeo in row.index:
-                fila_sap[col_sap] = str(row[config_mapeo])
-    
-    # 5. Aplicar lookups si están disponibles
-    if centro_cebe_lookup and "Centro" in row.index:
-        centro = str(row["Centro"])
-        if centro in centro_cebe_lookup:
-            if "Centro de beneficio" in fila_sap:
-                fila_sap["Centro de beneficio"] = centro_cebe_lookup[centro]
-    
-    return fila_sap
-
-
-def identificar_columnas_vacias(df: pd.DataFrame, header: List[str]) -> List[str]:
-    """Identifica qué columnas de SAP quedaron todas vacías en el output."""
-    vacias = []
-    for col in header:
-        if col in df.columns:
-            valores_no_vacios = df[col].astype(str).str.strip()
-            if (valores_no_vacios == "").all():
-                vacias.append(col)
-    return vacias
-
+        columna = df.iloc[:, idx].astype(str).str.strip()
+        if (columna == "").all():
+            vacios.append(campo)
+    return vacios
