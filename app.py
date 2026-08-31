@@ -1,6 +1,7 @@
 import io
 from datetime import datetime
 
+import pandas as pd
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for
 
 import engine
@@ -38,65 +39,61 @@ def procesar():
         return redirect(url_for("index"))
 
     avisos = resultado_df.attrs.get("avisos", [])
-    
+
     # Si se solicita generar formato SAP
     df_salida = resultado_df
     nombre_sheet = "AMPLIADO"
-    
+    df_pendientes = None
+
     if generar_sap:
-        try:
-            # Obtener la filial del input
-            if "FILIAL CODIGO" in resultado_df.columns:
-                filiales_unicas = resultado_df["FILIAL CODIGO"].unique()
-                if len(filiales_unicas) > 1:
-                    flash("⚠️ Entrada con múltiples filiales. Usando la primera.", "warning")
-                filial = str(filiales_unicas[0]).strip()
-            else:
-                flash("⚠️ Columna FILIAL CODIGO no encontrada. No se puede generar SAP.", "warning")
-                generar_sap = False
-            
-            if generar_sap:
-                # Mapear filial a tipo de material SAP
+        if "FILIAL CODIGO" not in resultado_df.columns:
+            flash("⚠️ Columna FILIAL CODIGO no encontrada. No se puede generar SAP.", "warning")
+            generar_sap = False
+        else:
+            filiales_unicas = resultado_df["FILIAL CODIGO"].unique()
+            if len(filiales_unicas) > 1:
+                flash("⚠️ Entrada con múltiples filiales en el mismo archivo. Solo se puede generar SAP para una filial a la vez.", "error")
+                return redirect(url_for("index"))
+            filial = str(filiales_unicas[0]).strip()
+
+            try:
                 tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
-                
-                # Cargar tabla de referencia centro->cebe si existe para VC00
-                centro_cebe_lookup = None
-                if filial in ["VC00", "VD00", "VE00"]:
-                    try:
-                        ref_df = engine.pd.read_excel(
-                            engine.BASE_DIR / "data" / "reference" / "centros_cebe_vc00.xlsx"
-                        )
-                        centro_cebe_lookup = dict(zip(ref_df["CENTRO"], ref_df["COD_CEBE"]))
-                    except Exception as e:
-                        avisos.append(f"⚠️ No se pudo cargar tabla de referencia CEBE: {e}")
-                
-                # Aplicar plantilla SAP
                 df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
                     df_ampliado=resultado_df,
                     tipo_material=tipo_material_sap,
-                    centro_cebe_lookup=centro_cebe_lookup,
                 )
-                
                 nombre_sheet = f"SAP_{tipo_material_sap}"
-                
-                # Avisos sobre campos pendientes
-                if metadatos_sap.get("campos_pendientes"):
-                    campos_pend = ", ".join(metadatos_sap["campos_pendientes"][:3])
-                    avisos.append(f"ℹ️ Campos pendientes de lookup: {campos_pend}... (Ver documentación)")
-                
-                if metadatos_sap.get("columnas_vacias"):
-                    cols_vacias_count = len(metadatos_sap["columnas_vacias"])
-                    avisos.append(f"ℹ️ {cols_vacias_count} columnas vacías en formato SAP (esperado)")
-                
-        except salida_sap.FormatoSAPError as e:
-            flash(f"Error en conversión SAP: {e}", "error")
-            generar_sap = False
-    
+
+                pendientes = metadatos_sap.get("campos_pendientes", {})
+                if pendientes:
+                    avisos.append(
+                        f"ℹ️ {len(pendientes)} columnas SAP quedaron vacías porque el negocio todavía no confirmó "
+                        f"la regla (ver hoja PENDIENTES): {', '.join(list(pendientes.keys())[:5])}"
+                        + ("..." if len(pendientes) > 5 else "")
+                    )
+                    df_pendientes = pd.DataFrame(
+                        {"Columna SAP pendiente": list(pendientes.keys()), "Motivo / nota del negocio": list(pendientes.values())}
+                    )
+
+                obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
+                faltantes_no_pendientes = [c for c in obligatorios_vacios if c not in pendientes]
+                if faltantes_no_pendientes:
+                    avisos.append(
+                        "⚠️ Columnas obligatorias sin dato (no son 'pendientes de negocio', probablemente falta "
+                        f"la tabla de referencia de esta filial): {', '.join(faltantes_no_pendientes)}"
+                    )
+            except salida_sap.FormatoSAPError as e:
+                flash(f"Error en conversión SAP: {e}", "error")
+                return redirect(url_for("index"))
+
     for a in avisos:
         flash(a, "warning")
 
     buffer = io.BytesIO()
-    df_salida.to_excel(buffer, index=False, sheet_name=nombre_sheet)
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+        if df_pendientes is not None:
+            df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
     buffer.seek(0)
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"

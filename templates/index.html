@@ -25,6 +25,14 @@
       <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
     </fieldset>
 
+    <fieldset>
+      <label class="tipo-option">
+        <input type="checkbox" id="generar_sap" name="generar_sap">
+        Generar formato de carga SAP (MM01)
+        <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input. Los campos que el negocio todavía no confirmó quedan en blanco, listados en una hoja aparte "PENDIENTES".</span>
+      </label>
+    </fieldset>
+
     <button type="submit">Generar ampliación</button>
   </form>
 </div>

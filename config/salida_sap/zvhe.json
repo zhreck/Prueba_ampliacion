@@ -1,187 +1,30 @@
 {
-  "_descripcion": "Plantilla SAP para tipo ZVHE (Automotriz) - filial VF00",
-  "_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO - Ver notas_pendientes. Configuración lista, falta solo el rango.",
-  
+  "_descripcion": "Plantilla SAP para tipo ZVHE (Automotriz) - filial VF00.",
+  "_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO. 'rango_correlativo_nombre' apunta a un nombre que contiene 'PENDIENTE' a propósito: salida_sap.aplicar_plantilla_sap() revisa ese string y falla con FormatoSAPError explícito si alguien intenta generar SAP para VF00 antes de que Seba entregue el rango real. No hay que tocar Python para este bloqueo — basta con que este nombre siga sin registrarse en correlativo.py.",
+
   "tipo_material": "ZVHE",
   "bloque_confirmacion_sap": "ZVHE",
-  "transaccion": "tau",
   "rango_correlativo_nombre": "zvhe_material_PENDIENTE",
-  "_rango_corr_nota": "ERROR: Rango de material para ZVHE (VF00) NO ESTÁ CONFIRMADO. La app fallará con error explícito si se intenta usar sin configurar. Seba debe entregar: rango_min y rango_max.",
-  
-  "mapeos": {
-    "Transaccion": {
-      "from": "Transaccion",
-      "default": "tau"
-    },
-    "Ramo": {
-      "from": "Ramo",
-      "default": "T"
-    },
-    "Tipo material": {
-      "from": "Tipo material",
-      "default": "ZVHE"
-    },
-    "Centro": {
-      "from": "CENTRO"
-    },
-    "Almacén": {
-      "from": "Almacen",
-      "default": ""
-    },
-    "Clase de valoración": {
-      "from": "clase_valoracion",
-      "default": ""
-    },
-    "Org. Ventas": {
-      "from": "ORG_VENTAS",
-      "description": "Repetir para cada Org. Vtas (según dynamic_rules)"
-    },
-    "Canal distribución": {
-      "from": "CANAL_DISTRIBUCION",
-      "description": "Repetir para cada Canal (según dynamic_rules)"
-    },
-    "Unidad medida base": {
-      "from": "Unidad medida base",
-      "default": "UN"
-    },
-    "Texto breve material (40)": {
-      "from": "TEXTO BREVE"
-    },
-    "Grupo de artículos": {
-      "from": "GRUPO ARTICULO"
-    },
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": {
-      "from": "JERARQUIA"
-    },
-    "Sector": {
-      "from": "Sector",
-      "default": "10"
-    },
-    "Jerarquía de productos SD\nMVKE-PRODH": {
-      "from": "JERARQUIA",
-      "description": "Mismo valor que MARA-PRDHA (duplicado)"
-    },
-    "Gr.estadística mat.": {
-      "from": "Gr.estadistica",
-      "default": "1"
-    },
-    "Clasificación Fiscal para el materi": {
-      "from": "clasificacion_fiscal",
-      "default": "1",
-      "note": "Temporalmente hardcodeado. Requiere lookup según país."
-    },
-    "Categoría Clase": {
-      "from": "categoria_clase",
-      "default": "300"
-    },
-    "Clase": {
-      "from": "clase",
-      "default": "ZMAQUINAS"
-    },
-    "Grupo tipos posición": {
-      "from": "grupo_tipos_posicion",
-      "default": "VMS0"
-    },
-    "Grupo tipos posición gral": {
-      "from": "grupo_tipos_posicion_gral",
-      "default": "VMS0"
-    },
-    "Gr.imputación mat.": {
-      "from": "grupo_imputacion",
-      "note": "Pendiente de lookup - Validar Valores"
-    },
-    "Grupo de transporte": {
-      "from": "grupo_transporte",
-      "default": "0001"
-    },
-    "Grupo de carga": {
-      "from": "grupo_carga",
-      "default": "0001"
-    },
-    "verificación de disponibilidad": {
-      "from": "verificacion_disponibilidad",
-      "default": "KP"
-    },
-    "Grupo materiales 1": {
-      "from": "MARCA CODIGO",
-      "note": "Listado de Marcas - hoy mapeamos MARCA CODIGO"
-    },
-    "Centro de beneficio": {
-      "from": "COD_CEBE",
-      "note": "Vinculado desde tabla de referencia centro->cebe"
-    },
-    "Grupo de compras": {
-      "from": "grupo_compras",
-      "note": "Pendiente de lookup - Validar Listado de Grupos de Compra"
-    },
-    "Sujeto-lote": {
-      "from": "sujeto_lote",
-      "default": "X"
-    },
-    "Condición Almacenaje": {
-      "from": "condicion_almacenaje",
-      "note": "AN(Animales) RP(Repuestos) UN(Unidades)"
-    },
-    "Sujeto a Lote": {
-      "from": "sujeto_a_lote",
-      "default": "X"
-    },
-    "Tipo de valoración": {
-      "from": "tipo_valoracion",
-      "default": "X"
-    },
-    "Control de precios": {
-      "from": "control_precios",
-      "default": "V"
-    },
-    "Categoría valoración": {
-      "from": "NOMBRE FABRICANTE",
-      "note": "Temporalmente usando NOMBRE FABRICANTE. Pendiente de lookup - Definir Categorías"
-    },
-    "Tipo de MRP": {
-      "from": "tipo_mrp",
-      "default": "ND"
-    },
-    "Precio Variable": {
-      "from": "precio_variable",
-      "note": "Pendiente de lookup o input adicional"
-    },
-    "Fabricante": {
-      "from": "FABRICANTE CODIGO"
-    },
-    "Número de Pieza de Fabricante (NPF)": {
-      "from": "NPF:Fabricante"
-    },
-    "Unidad med.salida": {
-      "from": "unidad_medida_salida",
-      "default": "UN"
-    },
-    "Clasificación Fiscal para el material ZMWS": {
-      "from": "clasificacion_zmws",
-      "default": "0",
-      "note": "Valor por defecto ZMWS según país"
-    }
+
+  "campos_desde_ampliado": {
+    "Centro": "CENTRO",
+    "Texto breve material (40)": "TEXTO BREVE",
+    "Grupo de artículos": "GRUPO ARTICULO",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
+    "Fabricante": "FABRICANTE CODIGO",
+    "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
+    "Centro de beneficio": "COD_CEBE"
   },
 
-  "campos_siempre_vacios": [
-    "Material",
-    "Datos Basicos.1", "Datos Basicos.2",
-    "Vista PrepTrabajo.1", "Vista contabilidad", "Vista planif.nec. 1", "Vista Planif-Neces 2",
-    "Vista compras", "Vista tx.ped.comp.",
-    "Vista Datos Gral Centro almacenamiento 1", "Vista Datos Gral Centro almacenamiento 2",
-    "Vista pronósticos", "Vista ventas 1", "Vista ventas 2", "Vista texto-ventas",
-    "Vista ventas Centro", "Vista medios aux. de", "Vista calidad", "Vista Cálc. costes",
-    "Vista clasificación", "Vista pr-trbj. 2", "Vista PlanNeces3", "Vista PlanNeces4",
-    "Vista Ejecución WM", "Vista comercio ext."
-  ],
+  "defaults_confirmados_extra": {},
+
+  "pendientes_extra": ["Precio Variable"],
 
   "notas_pendientes": [
-    "❌ RANGO DE MATERIAL NO CONFIRMADO - La app fallará con error claro si se intenta usar sin configurar.",
-    "La tabla de referencia centro->cebe para VF00 (filial Automotriz) no está disponible todavía.",
-    "Clasificación Fiscal: Temporalmente hardcodeado a '1'. Requiere lookup por país.",
-    "Gr.imputación mat.: Requiere validación de valores desde tabla de referencia",
-    "Grupo de compras: Requiere validación listado",
-    "Categoría valoración: Hoy usa NOMBRE FABRICANTE, requiere definición de categorías",
-    "Precio Variable: Requiere input adicional o lookup"
+    "❌ RANGO DE MATERIAL NO CONFIRMADO — la app falla con error explícito hasta que Seba entregue rango_min/rango_max.",
+    "La tabla de referencia centro->cebe para VF00 es data/reference/modelos_centros_ampliacion.xlsx, ya cargada y confirmada según docs/mapeo_filiales.json, PERO el archivo commiteado en el repo es un symlink roto (apunta a ../../modelos_centros_ampliacion.xlsx, que no existe) — hay que subir el Excel real en esa ruta, no un symlink, para que VF00 funcione siquiera en la ampliación base.",
+    "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES.",
+    "Sector y los flags de 'Vista ...' no están confirmados para ZVHE (solo hay evidencia real para ZMAQ). Quedan en blanco.",
+    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE."
   ]
 }
