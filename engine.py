@@ -15,6 +15,7 @@ Para agregar un tipo nuevo (ej. Repuestos) más adelante:
 import json
 from pathlib import Path
 
+import openpyxl
 import pandas as pd
 
 import correlativo
@@ -99,6 +100,47 @@ def _cargar_referencia(ref_file: str, ref_sheet) -> pd.DataFrame:
     return pd.read_excel(ref_path, sheet_name=ref_sheet or 0)
 
 
+def _cargar_disponibilidad(cfg: dict) -> dict[tuple[str, str], float] | None:
+    """
+    Matriz Centro x Fabricante confirmada por negocio (1 = habilitado,
+    0.5 = por confirmar pero se trata como habilitado, 0 = bloqueado: ese
+    fabricante no tiene CEBE para ese centro y NO puede generarse ahí,
+    aunque la tabla de referencia fabricante->centro/cebe tenga una fila
+    para esa combinación (puede ser un error de carga en esa tabla).
+
+    Layout fijo de la hoja (ver data/reference/Centros_UN_RP.xlsx, hoja
+    "Unidades"): fila 1 = códigos de fabricante desde la columna 3 en
+    adelante, filas 3+ = un centro por fila (columna 1 = CENTRO).
+
+    Devuelve None si el tipo no configuró "disponibilidad" (nadie valida
+    nada, comportamiento anterior sin cambios).
+    """
+    disp_cfg = cfg.get("disponibilidad")
+    if not disp_cfg:
+        return None
+
+    path = BASE_DIR / disp_cfg["reference_file"]
+    if not path.exists():
+        raise InputInvalidoError(f"Falta el archivo de disponibilidad: {path}")
+
+    wb = openpyxl.load_workbook(path, data_only=True)
+    ws = wb[disp_cfg["sheet"]]
+
+    fabricantes = [ws.cell(row=1, column=c).value for c in range(3, ws.max_column + 1)]
+    lookup: dict[tuple[str, str], float] = {}
+    for r in range(3, ws.max_row + 1):
+        centro = ws.cell(row=r, column=1).value
+        if not centro:
+            continue
+        for i, fab in enumerate(fabricantes):
+            if not fab:
+                continue
+            valor = ws.cell(row=r, column=3 + i).value
+            if valor is not None:
+                lookup[(str(centro).strip(), str(fab).strip())] = float(valor)
+    return lookup
+
+
 def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     Punto de entrada principal: recibe el Excel del usuario (file-like) y
@@ -121,10 +163,55 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             ref_df_completa[reference_filter["column"]] == reference_filter["value"]
         ]
 
+    disponibilidad = _cargar_disponibilidad(cfg)
+    bloqueado_valor = cfg.get("disponibilidad", {}).get("valor_bloqueado", 0)
+
     corr_cfg = cfg.get("correlativo", {"enabled": False})
 
     filas_salida = []
     avisos = []
+
+    def _filtrar_por_disponibilidad(matches_df, fabricante):
+        """Saca del match los centros que la matriz de disponibilidad marca
+        como bloqueados para ese fabricante, aunque la tabla de referencia
+        traiga una fila (dato posiblemente mal cargado ahí)."""
+        if disponibilidad is None or matches_df.empty:
+            return matches_df, []
+        centros_excluidos = []
+        indices_ok = []
+        for idx, fila_ref in matches_df.iterrows():
+            centro = str(fila_ref["CENTRO"]).strip()
+            estado = disponibilidad.get((centro, str(fabricante).strip()))
+            if estado == bloqueado_valor:
+                centros_excluidos.append(centro)
+            else:
+                indices_ok.append(idx)
+        return matches_df.loc[indices_ok], centros_excluidos
+
+    def _fabricante_bloqueado_en_toda_la_filial(ref_df_filial, fabricante) -> bool:
+        """
+        True si la matriz de disponibilidad conoce a este fabricante para AL
+        MENOS uno de los centros de esta filial, y lo marca en 0 para TODOS
+        ellos (nunca en 1 o 0.5). Cubre el caso en que la tabla de referencia
+        fabricante->centro/cebe ni siquiera tiene una fila para esta
+        combinación (por eso no basta con filtrar matches_crudos): un
+        fabricante conocido-pero-no-habilitado en esta filial no debe caer en
+        el comodín F9999, tiene que rechazarse.
+        Si la matriz no conoce el fabricante para ningún centro de la filial,
+        devuelve False (es un fabricante nuevo/no catalogado: sigue el
+        comportamiento normal de fallback).
+        """
+        if disponibilidad is None or ref_df_filial.empty:
+            return False
+        centros_filial = ref_df_filial["CENTRO"].astype(str).str.strip().unique()
+        estados = [
+            disponibilidad[(centro, str(fabricante).strip())]
+            for centro in centros_filial
+            if (centro, str(fabricante).strip()) in disponibilidad
+        ]
+        if not estados:
+            return False
+        return all(e == bloqueado_valor for e in estados)
 
     for _, fila_input in input_df.iterrows():
         valor_key = fila_input[key_input]
@@ -134,11 +221,34 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             filial_fila = str(fila_input.get("FILIAL CODIGO", "")).strip()
             ref_df = ref_df[ref_df[filial_column] == filial_fila]
 
-        matches = ref_df[ref_df[key_ref] == valor_key]
+        matches_crudos = ref_df[ref_df[key_ref] == valor_key]
+        matches, centros_excluidos = _filtrar_por_disponibilidad(matches_crudos, valor_key)
+
+        if not matches_crudos.empty and matches.empty:
+            # El fabricante SÍ tiene fila(s) en la tabla de referencia, pero la
+            # matriz de disponibilidad los bloquea a todos: no caer al comodín,
+            # sería disfrazar un fabricante conocido-pero-no-habilitado como
+            # "todas/otras marcas".
+            avisos.append(
+                f"Fabricante '{valor_key}' está marcado como NO habilitado (0) en la matriz de "
+                f"disponibilidad para el/los centro(s) {', '.join(sorted(set(centros_excluidos)))} "
+                f"— fila omitida (no se genera, aunque exista un CEBE cargado para esa combinación)."
+            )
+            continue
+
+        if matches.empty and _fabricante_bloqueado_en_toda_la_filial(ref_df, valor_key):
+            avisos.append(
+                f"Fabricante '{valor_key}' no está habilitado (0) en la matriz de disponibilidad "
+                f"para ningún centro de la filial '{filial_fila if filial_column else ''}' "
+                f"— fila omitida (no se genera; no cae al comodín porque el fabricante SÍ es "
+                f"conocido, solo que no está autorizado ahí)."
+            )
+            continue
 
         uso_fallback = False
-        if matches.empty and fallback:
-            matches = ref_df[ref_df[key_ref] == fallback]
+        if matches_crudos.empty and fallback:
+            matches_crudos = ref_df[ref_df[key_ref] == fallback]
+            matches, _ = _filtrar_por_disponibilidad(matches_crudos, fallback)
             uso_fallback = True
 
         if matches.empty:
@@ -147,6 +257,13 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
                 f"(y no hay fallback disponible) — fila omitida."
             )
             continue
+
+        if centros_excluidos:
+            avisos.append(
+                f"Fabricante '{valor_key}': se excluyeron los centros "
+                f"{', '.join(sorted(set(centros_excluidos)))} (bloqueados en la matriz de disponibilidad), "
+                f"se amplió solo al resto."
+            )
 
         # Un mismo material conserva UN solo número, repetido en todas sus
         # filas ampliadas (no uno distinto por centro).

@@ -41,6 +41,13 @@
     "NOM_CODIGO_CEBE"
   ],
 
+  "_disponibilidad_nota": "Matriz Centro x Fabricante confirmada por negocio (hoja 'Unidades' de Centros_UN_RP.xlsx): 1 y 0.5 se tratan como habilitado (0.5 = por confirmar, negocio pidió tratarlo como 'sí va' por ahora), 0 = bloqueado, ese fabricante no tiene CEBE para ese centro y no puede generarse ahí aunque centros_ampliacion.xlsx tenga una fila (dato posiblemente mal cargado). Si el fabricante no aparece en esta matriz para ningún centro de la filial, se trata como fabricante nuevo/no catalogado y sigue el comportamiento normal (match o fallback a comodín). OJO: la hoja 'Unidades' no trae fila para VC03, VD03 ni VF07 (centros nuevos/aún no incorporados a esa matriz según sus propias notas) — para esos 3 centros puntuales esta validación no aplica todavía (no bloquea ni confirma nada), se comportan como antes de este cambio.",
+  "disponibilidad": {
+    "reference_file": "data/reference/Centros_UN_RP.xlsx",
+    "sheet": "Unidades",
+    "valor_bloqueado": 0
+  },
+
   "correlativo": {
     "enabled": true,
     "nombre": "material_global",
