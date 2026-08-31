@@ -18,6 +18,26 @@ def index():
     return render_template("index.html", tipos=tipos)
 
 
+@app.route("/plantilla/<tipo_id>")
+def plantilla(tipo_id):
+    try:
+        wb = engine.generar_plantilla_vacia(tipo_id)
+    except engine.TipoNoEncontradoError as e:
+        flash(str(e), "error")
+        return redirect(url_for("index"))
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"plantilla_{tipo_id}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 @app.route("/procesar", methods=["POST"])
 def procesar():
     tipo_id = request.form.get("tipo")

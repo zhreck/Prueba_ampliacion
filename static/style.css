@@ -124,6 +124,15 @@ label {
   margin-left: 22px;
 }
 
+.plantilla-link {
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+
+.plantilla-link:hover { color: var(--accent); }
+
 input[type="file"] {
   font-family: var(--sans);
   font-size: 14px;

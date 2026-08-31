@@ -15,7 +15,10 @@
         <label class="tipo-option">
           <input type="radio" name="tipo" value="{{ tipo.id }}" {% if loop.first %}checked{% endif %}>
           {{ tipo.nombre }}
-          <span class="desc">{{ tipo.descripcion }}</span>
+          <span class="desc">
+            {{ tipo.descripcion }}
+            — <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
+          </span>
         </label>
       {% endfor %}
     </fieldset>

@@ -49,6 +49,35 @@ def cargar_config(tipo_id: str) -> dict:
         return json.load(fh)
 
 
+def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.Workbook":
+    """
+    Arma un Excel vacío con la hoja y columnas de input del tipo (solo
+    encabezados), para que alguien sin el Excel original tenga de dónde
+    partir. Las columnas de texto (config "text_columns") quedan con
+    formato de celda texto ('@') en las filas vacías, para evitar el
+    problema de siempre (ceros iniciales / notación científica) sin tener
+    que explicarle al usuario que las formatee él mismo.
+    """
+    cfg = cargar_config(tipo_id)
+    columnas = cfg["input_columns"]
+    text_columns = set(cfg.get("text_columns", []))
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = cfg["input_sheet"]
+    ws.append(columnas)
+
+    for row in range(2, 2 + filas_vacias):
+        for col_idx, nombre_col in enumerate(columnas, start=1):
+            if nombre_col in text_columns:
+                ws.cell(row=row, column=col_idx).number_format = "@"
+
+    for col_idx, nombre_col in enumerate(columnas, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(14, len(nombre_col) + 2)
+
+    return wb
+
+
 def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     # Preparar dtype dict y converters para especificar columnas de texto
     text_columns = cfg.get("text_columns", [])
