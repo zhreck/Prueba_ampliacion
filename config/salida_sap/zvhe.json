@@ -1,10 +1,10 @@
 {
   "_descripcion": "Plantilla SAP para tipo ZVHE (Automotriz) - filial VF00.",
-  "_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO. 'rango_correlativo_nombre' apunta a un nombre que contiene 'PENDIENTE' a propósito: salida_sap.aplicar_plantilla_sap() revisa ese string y falla con FormatoSAPError explícito si alguien intenta generar SAP para VF00 antes de que Seba entregue el rango real. No hay que tocar Python para este bloqueo — basta con que este nombre siga sin registrarse en correlativo.py.",
+  "_nota": "Rango de material confirmado por Seba: 40000000-49999999 (correlativo.py, DEFAULT_RANGOS['zvhe_material']). Si en algún momento el rango dejara de estar confirmado, basta con volver a apuntar 'rango_correlativo_nombre' a un nombre que contenga 'PENDIENTE' (sin registrarlo en correlativo.py) para que salida_sap.aplicar_plantilla_sap() vuelva a bloquear con error explícito.",
 
   "tipo_material": "ZVHE",
   "bloque_confirmacion_sap": "ZVHE",
-  "rango_correlativo_nombre": "zvhe_material_PENDIENTE",
+  "rango_correlativo_nombre": "zvhe_material",
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -21,10 +21,11 @@
   "pendientes_extra": ["Precio Variable"],
 
   "notas_pendientes": [
-    "❌ RANGO DE MATERIAL NO CONFIRMADO — la app falla con error explícito hasta que Seba entregue rango_min/rango_max.",
-    "La tabla de referencia centro->cebe para VF00 es data/reference/modelos_centros_ampliacion.xlsx, ya cargada y confirmada según docs/mapeo_filiales.json, PERO el archivo commiteado en el repo es un symlink roto (apunta a ../../modelos_centros_ampliacion.xlsx, que no existe) — hay que subir el Excel real en esa ruta, no un symlink, para que VF00 funcione siquiera en la ampliación base.",
+    "Rango de material: resuelto (40000000-49999999, confirmado por Seba).",
+    "Centro->Cebe: resuelto. Seba subió la tabla real (data/reference/centros_ampliacion.xlsx), que reemplaza al symlink roto que traía el repo. Para VF00 trae 42 filas / varios fabricantes, incl. comodín F9999.",
     "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES.",
     "Sector y los flags de 'Vista ...' no están confirmados para ZVHE (solo hay evidencia real para ZMAQ). Quedan en blanco.",
-    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE."
+    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE.",
+    "⚠️ A confirmar con negocio: docs/confirmacion_campos_parsed.json (bloque ZVHE, 'defaults') trae \"Clase\": \"ZMAQUINAS\" para Automotriz — parece un copy/paste del bloque de Maquinarias, pero se está usando tal cual por ser la fuente de verdad indicada. Revisar si el valor real para VF00 debería ser otro (ej. 'ZVEHICULOS' o similar)."
   ]
 }

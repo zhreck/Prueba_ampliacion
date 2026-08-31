@@ -99,30 +99,6 @@ def _cargar_referencia(ref_file: str, ref_sheet) -> pd.DataFrame:
     return pd.read_excel(ref_path, sheet_name=ref_sheet or 0)
 
 
-def _resolver_reglas_referencia(cfg: dict, filial: str | None) -> dict:
-    """
-    Resuelve qué reference_file / key_reference / fallback_value / output_columns_from_reference
-    / expandir_todos usar para una fila, según su FILIAL CODIGO.
-
-    Por defecto usa los valores "planos" del tipo (reference_file, key_reference, ...).
-    Si el tipo define "reference_by_filial", la filial de la fila puede pisar cualquiera
-    de esos campos (por ejemplo, ZMAQ no hace match por fabricante: siempre expande a los
-    mismos centros, así que usa "expandir_todos": true con su propia tabla centro->cebe).
-    """
-    base = {
-        "reference_file": cfg.get("reference_file"),
-        "reference_sheet": cfg.get("reference_sheet"),
-        "key_reference": cfg.get("key_reference"),
-        "fallback_value": cfg.get("fallback_value"),
-        "output_columns_from_reference": cfg.get("output_columns_from_reference", []),
-        "expandir_todos": False,
-    }
-    overrides_por_filial = cfg.get("reference_by_filial", {})
-    if filial and filial in overrides_por_filial:
-        base.update(overrides_por_filial[filial])
-    return base
-
-
 def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     Punto de entrada principal: recibe el Excel del usuario (file-like) y
@@ -130,48 +106,40 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     cfg = cargar_config(tipo_id)
     input_df = _leer_input(file_storage, cfg)
+    ref_df_completa = _cargar_referencia(cfg["reference_file"], cfg.get("reference_sheet"))
 
     key_input = cfg["key_input"]
+    key_ref = cfg["key_reference"]
+    fallback = cfg.get("fallback_value")
+    cols_from_ref = cfg["output_columns_from_reference"]
     text_columns = cfg.get("text_columns", [])
+    filial_column = cfg.get("filial_column")
+    reference_filter = cfg.get("reference_filter")
+
+    if reference_filter:
+        ref_df_completa = ref_df_completa[
+            ref_df_completa[reference_filter["column"]] == reference_filter["value"]
+        ]
 
     corr_cfg = cfg.get("correlativo", {"enabled": False})
-
-    # Cache de tablas de referencia ya cargadas, por (reference_file, reference_sheet),
-    # para no releer el mismo Excel por cada fila del input.
-    _referencias_cache: dict[tuple, pd.DataFrame] = {}
-
-    def _referencia_para(reglas: dict) -> pd.DataFrame:
-        clave = (reglas["reference_file"], reglas["reference_sheet"])
-        if clave not in _referencias_cache:
-            _referencias_cache[clave] = _cargar_referencia(reglas["reference_file"], reglas["reference_sheet"])
-        return _referencias_cache[clave]
 
     filas_salida = []
     avisos = []
 
     for _, fila_input in input_df.iterrows():
-        filial_fila = str(fila_input.get("FILIAL CODIGO", "")).strip() or None
-        reglas = _resolver_reglas_referencia(cfg, filial_fila)
-        ref_df = _referencia_para(reglas)
-        key_ref = reglas["key_reference"]
-        fallback = reglas["fallback_value"]
-        cols_from_ref = reglas["output_columns_from_reference"]
-
         valor_key = fila_input[key_input]
 
-        if reglas["expandir_todos"]:
-            # Esta filial no hace match por fabricante: todas las filas de
-            # referencia (ej. la lista fija de centros de la filial) aplican
-            # a todos los materiales por igual.
-            matches = ref_df
-            uso_fallback = False
-        else:
-            matches = ref_df[ref_df[key_ref] == valor_key]
+        ref_df = ref_df_completa
+        if filial_column:
+            filial_fila = str(fila_input.get("FILIAL CODIGO", "")).strip()
+            ref_df = ref_df[ref_df[filial_column] == filial_fila]
 
-            uso_fallback = False
-            if matches.empty and fallback:
-                matches = ref_df[ref_df[key_ref] == fallback]
-                uso_fallback = True
+        matches = ref_df[ref_df[key_ref] == valor_key]
+
+        uso_fallback = False
+        if matches.empty and fallback:
+            matches = ref_df[ref_df[key_ref] == fallback]
+            uso_fallback = True
 
         if matches.empty:
             avisos.append(

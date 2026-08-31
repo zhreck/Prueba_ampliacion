@@ -5,7 +5,7 @@ Soporta múltiples rangos con nombres distintos:
 - "material_global" (1 - 5.000.000): Original para ampliación sin SAP
 - "zmaq_material" (20000000 - 29999999): Maquinarias SAP
 - "zcam_material" (30000000 - 39999999): Camiones SAP
-- "zvhe_material_PENDIENTE": ERROR - Automotriz no tiene rango confirmado todavía
+- "zvhe_material" (40000000 - 49999999): Automotriz SAP
 
 Cada tipo de material puede tener su propio correlativo nombrado.
 """
@@ -26,6 +26,7 @@ DEFAULT_RANGOS = {
     "material_global": {"min": 1, "max": 5000000, "descripcion": "Ampliación original"},
     "zmaq_material": {"min": 20000000, "max": 29999999, "descripcion": "ZMAQ - Maquinarias (VC00, VD00, VE00)"},
     "zcam_material": {"min": 30000000, "max": 39999999, "descripcion": "ZCAM - Camiones (VA00)"},
+    "zvhe_material": {"min": 40000000, "max": 49999999, "descripcion": "ZVHE - Automotriz (VF00)"},
 }
 
 

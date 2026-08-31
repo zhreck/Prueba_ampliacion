@@ -24,7 +24,7 @@
   "pendientes_extra": ["Precio Variable"],
 
   "notas_pendientes": [
-    "❌ No existe tabla de referencia centro->cebe para VA00 todavía. La app amplía usando la tabla genérica de Modelos (data/reference/modelos_centros_ampliacion.xlsx, pensada para VF00) y probablemente no encontrará el fabricante -> los centros/COD_CEBE quedarán vacíos hasta agregar la tabla real de VA00 en config/tipos/modelos.json -> reference_by_filial.",
+    "Centro->Cebe: ya existe en data/reference/centros_ampliacion.xlsx (32 filas para COD_SOCIEDAD==VA00, 4 fabricantes: DONG FENG DFCV/F0001, FAW/F0028, INTERNATIONAL/F0006, DONG FENG DFAC/F0022, cubriendo VA00..VA07). OJO: no hay fila F9999 (comodín 'TODAS/OTRAS MARCAS') para VA00 en la tabla — un fabricante de camión que no sea uno de esos 4 se omite con aviso, no cae a ningún comodín.",
     "Rango de material confirmado: 30000000-39999999.",
     "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES.",
     "Sector y los flags de 'Vista ...' (Datos Basicos, Vista contabilidad, Vista compras, etc.) NO están confirmados para ZCAM (a diferencia de ZMAQ, que tiene un ejemplo real). Quedan en blanco hasta tener un ejemplo de salida real de ZCAM o confirmación explícita de negocio.",
