@@ -37,6 +37,10 @@ Reglas universales (no dependen de la plantilla, aplican siempre):
   "Jerarquía productos\\n MARA-PRDHA\\nReplicar en\\nMVKE-PRODH". Esto SÍ está resuelto
   en confirmacion_campos_parsed.json (nota: "Tomar el dato que se registró en
   MARA-PRDHA"), aunque el parser lo haya agrupado bajo needs_review_or_lookup.
+- "Categoría Clase", "Clase" y "Unidad medida pedido" quedan SIEMPRE vacíos, para
+  las tres plantillas. Seba confirmó esto directamente (arreglos_notas.txt) y pisa
+  lo que dice confirmacion_campos_parsed.json (que trae "300"/"ZMAQUINAS"/"UN" en
+  "defaults" para estos campos) — el ejemplo real de ZMAQ ya los traía vacíos.
 """
 
 import json
@@ -59,6 +63,10 @@ COL_JERARQUIA_MARA = "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH
 COL_JERARQUIA_SD = "Jerarquía de productos SD\nMVKE-PRODH"
 
 TRANSACCION_VALOR = "MM01"
+
+# Confirmado directamente por Seba (arreglos_notas.txt): estos campos van SIEMPRE
+# vacíos en las tres plantillas, pase lo que diga confirmacion_campos_parsed.json.
+CAMPOS_FORZAR_VACIO = {"Categoría Clase", "Clase", "Unidad medida pedido"}
 
 # Filiales que ya tienen tipo de material y plantilla configurados. ZUSA queda
 # fuera a propósito (fuera de alcance, ver docs/mapeo_filiales.json).
@@ -225,15 +233,28 @@ def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]
     """
     Campos que quedan en blanco a propósito porque el negocio todavía no dio una
     regla, con el motivo. Nunca se rellenan con un valor inventado.
+
+    Un campo deja de estar "pendiente" apenas la plantilla de la filial le da una
+    regla propia (defaults_confirmados_extra o campos_desde_ampliado) — así, cuando
+    Seba confirma un valor para una filial puntual (ej. "Grupo de compras" solo para
+    ZMAQ), alcanza con agregarlo al JSON de esa plantilla; no hace falta tocar esta
+    función ni la lista needs_review_or_lookup de confirmacion_campos_parsed.json.
     """
+    resueltos_aparte = {COL_TRANSACCION, COL_MATERIAL, COL_JERARQUIA_SD} | CAMPOS_FORZAR_VACIO
+    resueltos_por_plantilla = (
+        set(plantilla.get("defaults_confirmados_extra", {}).keys())
+        | set(plantilla.get("campos_desde_ampliado", {}).keys())
+    )
+
     pendientes = {}
-    resueltos_aparte = {COL_TRANSACCION, COL_MATERIAL, COL_JERARQUIA_SD}
     for campo, nota in bloque.get("needs_review_or_lookup", {}).items():
-        if campo in resueltos_aparte:
+        if campo in resueltos_aparte or campo in resueltos_por_plantilla:
             continue
         pendientes[campo] = nota
 
     for campo in plantilla.get("pendientes_extra", []):
+        if campo in resueltos_por_plantilla:
+            continue
         pendientes.setdefault(campo, "Obligatorio sin regla confirmada (no evidenciado en un ejemplo real de esta filial).")
 
     return pendientes
@@ -261,8 +282,11 @@ def _generar_fila_sap(
             return
         fila[idx] = texto
 
-    # 1) Defaults confirmados por negocio (confirmacion_campos_parsed.json).
+    # 1) Defaults confirmados por negocio (confirmacion_campos_parsed.json), salvo
+    #    los que Seba pidió dejar siempre vacíos (pisan lo que diga este bloque).
     for campo, valor in bloque.get("defaults", {}).items():
+        if campo in CAMPOS_FORZAR_VACIO:
+            continue
         set_valor(campo, valor)
 
     # 2) Defaults extra evidenciados en un ejemplo real de esta filial (config-driven).

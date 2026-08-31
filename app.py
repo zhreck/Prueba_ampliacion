@@ -66,11 +66,7 @@ def procesar():
 
                 pendientes = metadatos_sap.get("campos_pendientes", {})
                 if pendientes:
-                    avisos.append(
-                        f"ℹ️ {len(pendientes)} columnas SAP quedaron vacías porque el negocio todavía no confirmó "
-                        f"la regla (ver hoja PENDIENTES): {', '.join(list(pendientes.keys())[:5])}"
-                        + ("..." if len(pendientes) > 5 else "")
-                    )
+                    avisos.append(f"ℹ️ {len(pendientes)} columnas pendientes de negocio (ver hoja PENDIENTES).")
                     df_pendientes = pd.DataFrame(
                         {"Columna SAP pendiente": list(pendientes.keys()), "Motivo / nota del negocio": list(pendientes.values())}
                     )
@@ -79,8 +75,8 @@ def procesar():
                 faltantes_no_pendientes = [c for c in obligatorios_vacios if c not in pendientes]
                 if faltantes_no_pendientes:
                     avisos.append(
-                        "⚠️ Columnas obligatorias sin dato (no son 'pendientes de negocio', probablemente falta "
-                        f"la tabla de referencia de esta filial): {', '.join(faltantes_no_pendientes)}"
+                        f"⚠️ Sin dato (no pendiente de negocio, revisar tabla de referencia): "
+                        f"{', '.join(faltantes_no_pendientes)}"
                     )
             except salida_sap.FormatoSAPError as e:
                 flash(f"Error en conversión SAP: {e}", "error")

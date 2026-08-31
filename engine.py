@@ -70,6 +70,10 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     df = df.dropna(how="all")
     df.columns = [str(c).strip() for c in df.columns]
 
+    # Filiales en cualquier capitalización (Vc00, vC00, VC00...) se tratan igual.
+    if "FILIAL CODIGO" in df.columns:
+        df["FILIAL CODIGO"] = df["FILIAL CODIGO"].astype(str).str.strip().str.upper()
+
     columnas_esperadas = cfg["input_columns"]
     faltantes = [c for c in columnas_esperadas if c not in df.columns]
     if faltantes:
@@ -230,18 +234,15 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             # sería disfrazar un fabricante conocido-pero-no-habilitado como
             # "todas/otras marcas".
             avisos.append(
-                f"Fabricante '{valor_key}' está marcado como NO habilitado (0) en la matriz de "
-                f"disponibilidad para el/los centro(s) {', '.join(sorted(set(centros_excluidos)))} "
-                f"— fila omitida (no se genera, aunque exista un CEBE cargado para esa combinación)."
+                f"Fabricante '{valor_key}' no habilitado para {', '.join(sorted(set(centros_excluidos)))} "
+                f"(matriz de disponibilidad) — fila omitida."
             )
             continue
 
         if matches.empty and _fabricante_bloqueado_en_toda_la_filial(ref_df, valor_key):
             avisos.append(
-                f"Fabricante '{valor_key}' no está habilitado (0) en la matriz de disponibilidad "
-                f"para ningún centro de la filial '{filial_fila if filial_column else ''}' "
-                f"— fila omitida (no se genera; no cae al comodín porque el fabricante SÍ es "
-                f"conocido, solo que no está autorizado ahí)."
+                f"Fabricante '{valor_key}' no habilitado en ningún centro de "
+                f"'{filial_fila if filial_column else ''}' (matriz de disponibilidad) — fila omitida."
             )
             continue
 
@@ -252,17 +253,13 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             uso_fallback = True
 
         if matches.empty:
-            avisos.append(
-                f"Fabricante '{valor_key}' no encontrado en la tabla de referencia "
-                f"(y no hay fallback disponible) — fila omitida."
-            )
+            avisos.append(f"Fabricante '{valor_key}' no encontrado — fila omitida.")
             continue
 
         if centros_excluidos:
             avisos.append(
-                f"Fabricante '{valor_key}': se excluyeron los centros "
-                f"{', '.join(sorted(set(centros_excluidos)))} (bloqueados en la matriz de disponibilidad), "
-                f"se amplió solo al resto."
+                f"Fabricante '{valor_key}': se excluyeron {', '.join(sorted(set(centros_excluidos)))} "
+                f"(no habilitados), se amplió al resto."
             )
 
         # Un mismo material conserva UN solo número, repetido en todas sus

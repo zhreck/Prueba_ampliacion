@@ -1,0 +1,14 @@
+1. arreglar mensaje de error, demasiado extenso y molesto para el usuario 
+2. Reconocer filiales de en en distintos formatos Vc00, vC00, etc
+3. categoria clase y clas deben estar vacias
+4. Clasificación Fiscal para el materi tiene que rellenar con 1
+5. Gr.imputación mat. rellenado con valor = '52'
+6. Grupo materiales 1 poner codigo marca, 
+7. Unidad medida pedido dejar vacio 
+8. Grupo de compras configurar valor = 'Q03' para TTM(incluye VC00, VD00, VE00)
+9. Condición Almacenaje dejar unidad de media puesta por el input 
+10.  Clasificación Fiscal para el material ZMWS rellenar con valor fijo de '0'
+11. Precio Variable dejar valor fijo en '1'
+12. categoria de valoracion (falta definir y mapear)
+
+

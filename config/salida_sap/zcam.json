@@ -13,20 +13,25 @@
     "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
     "Fabricante": "FABRICANTE CODIGO",
     "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
-    "Centro de beneficio": "COD_CEBE"
+    "Centro de beneficio": "COD_CEBE",
+    "Grupo materiales 1": "MARCA CODIGO",
+    "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
 
-  "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'), a diferencia de ZMAQ donde ese mismo campo viene de un ejemplo de salida real, no del Excel de confirmación.",
+  "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM).",
   "defaults_confirmados_extra": {
-    "Sujeto-lote": "X"
+    "Sujeto-lote": "X",
+    "Clasificación Fiscal para el materi": "1",
+    "Gr.imputación mat.": "52",
+    "Clasificación Fiscal para el material ZMWS": "0",
+    "Precio Variable": "1"
   },
-
-  "pendientes_extra": ["Precio Variable"],
 
   "notas_pendientes": [
     "Centro->Cebe: ya existe en data/reference/centros_ampliacion.xlsx (32 filas para COD_SOCIEDAD==VA00, 4 fabricantes: DONG FENG DFCV/F0001, FAW/F0028, INTERNATIONAL/F0006, DONG FENG DFAC/F0022, cubriendo VA00..VA07). OJO: no hay fila F9999 (comodín 'TODAS/OTRAS MARCAS') para VA00 en la tabla — un fabricante de camión que no sea uno de esos 4 se omite con aviso, no cae a ningún comodín.",
     "Rango de material confirmado: 30000000-39999999.",
-    "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES.",
+    "Grupo de compras: 'Q03' solo se confirmó para ZMAQ/TTM (arreglos_notas.txt), no para ZCAM -> sigue en blanco y se lista en la hoja PENDIENTES hasta que Seba confirme el valor para camiones.",
+    "Categoría valoración: sigue pendiente ('falta definir y mapear') -> queda en blanco y se lista en la hoja PENDIENTES.",
     "Sector y los flags de 'Vista ...' (Datos Basicos, Vista contabilidad, Vista compras, etc.) NO están confirmados para ZCAM (a diferencia de ZMAQ, que tiene un ejemplo real). Quedan en blanco hasta tener un ejemplo de salida real de ZCAM o confirmación explícita de negocio.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ)."
   ]

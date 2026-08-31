@@ -13,19 +13,26 @@
     "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
     "Fabricante": "FABRICANTE CODIGO",
     "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
-    "Centro de beneficio": "COD_CEBE"
+    "Centro de beneficio": "COD_CEBE",
+    "Grupo materiales 1": "MARCA CODIGO",
+    "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
 
-  "defaults_confirmados_extra": {},
-
-  "pendientes_extra": ["Precio Variable"],
+  "_defaults_confirmados_extra_nota": "Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZVHE).",
+  "defaults_confirmados_extra": {
+    "Clasificación Fiscal para el materi": "1",
+    "Gr.imputación mat.": "52",
+    "Clasificación Fiscal para el material ZMWS": "0",
+    "Precio Variable": "1"
+  },
 
   "notas_pendientes": [
     "Rango de material: resuelto (40000000-49999999, confirmado por Seba).",
     "Centro->Cebe: resuelto. Seba subió la tabla real (data/reference/centros_ampliacion.xlsx), que reemplaza al symlink roto que traía el repo. Para VF00 trae 42 filas / varios fabricantes, incl. comodín F9999.",
-    "Grupo de compras, Categoría valoración, Grupo materiales 1, Gr.imputación mat., Condición Almacenaje, Clasificación Fiscal para el materi/ZMWS, Precio Variable: needs_review_or_lookup sin regla confirmada -> quedan en blanco y se listan en la hoja PENDIENTES.",
+    "Grupo de compras: 'Q03' solo se confirmó para ZMAQ/TTM (arreglos_notas.txt), no para ZVHE -> sigue en blanco y se lista en la hoja PENDIENTES hasta que Seba confirme el valor para automotriz.",
+    "Categoría valoración: sigue pendiente ('falta definir y mapear') -> queda en blanco y se lista en la hoja PENDIENTES.",
     "Sector y los flags de 'Vista ...' no están confirmados para ZVHE (solo hay evidencia real para ZMAQ). Quedan en blanco.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE.",
-    "⚠️ A confirmar con negocio: docs/confirmacion_campos_parsed.json (bloque ZVHE, 'defaults') trae \"Clase\": \"ZMAQUINAS\" para Automotriz — parece un copy/paste del bloque de Maquinarias, pero se está usando tal cual por ser la fuente de verdad indicada. Revisar si el valor real para VF00 debería ser otro (ej. 'ZVEHICULOS' o similar)."
+    "Categoría Clase y Clase quedan siempre vacíos (confirmado por Seba en arreglos_notas.txt) — esto además resuelve la duda anterior sobre \"Clase\": \"ZMAQUINAS\" en confirmacion_campos_parsed.json para el bloque ZVHE: como el campo se fuerza vacío, ese valor ya no se usa."
   ]
 }
