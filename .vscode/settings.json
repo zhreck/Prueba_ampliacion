@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\"\\$BROWSER\" http://localhost:5000 2>/dev/null &$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

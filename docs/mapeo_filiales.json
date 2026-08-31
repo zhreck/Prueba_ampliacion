@@ -1,0 +1,31 @@
+{
+  "_nota": "Confirmado por Seba en conversación. ZUSA queda fuera de alcance por ahora.",
+  "filiales": {
+    "VF00": {
+      "sociedad": "Tattersall Automotriz",
+      "tipo_material": "ZVHE",
+      "bloque_confirmacionCampos": "ZVHE (fila 3, label 'tau')",
+      "rango_material": "NO CONFIRMADO — falta que Seba lo entregue. En confirmacionCampos.xlsx la columna 'Material' viene vacía para este bloque.",
+      "referencia_centro_cebe_existente": "app/data/reference/modelos_centros_ampliacion.xlsx (ya cargado, confirmado y probado — mapping fabricante -> centro/cebe, filtrado a AREA_LINEA_NEGOCIO='Vta. Unidades Nuevas')"
+    },
+    "VA00": {
+      "sociedad": "Tattersall Camiones (a confirmar nombre exacto)",
+      "tipo_material": "ZCAM",
+      "bloque_confirmacionCampos": "ZCAM (fila 19)",
+      "rango_material": "30000000-39999999",
+      "referencia_centro_cebe_existente": "NO EXISTE TODAVÍA — falta tabla de referencia (centro/cebe) para VA00."
+    },
+    "VC00_VD00_VE00": {
+      "sociedad": "Tattersall Maquinarias y relacionadas",
+      "tipo_material": "ZMAQ",
+      "bloque_confirmacionCampos": "ZMAQ (filas 7, 11 y 15 — 'ttm','tti','ttmq' — idénticas entre sí)",
+      "rango_material": "20000000-29999999 (compartido entre VC00, VD00 y VE00 según confirmacionCampos.xlsx)",
+      "referencia_centro_cebe_existente": "PARCIAL — solo hay un ejemplo de salida ya calculado para VC00 (docs/spec_sap_materiales/ejemplo_output_ZMAQ_VC00.xlsx), con centro->cebe FIJO (no depende del fabricante): VC00->VCLN02QCHY, VC01->VCLN02CAHY, VC02->VCLN02ANHY, VC04->VCLN02CUHY, VC05->VCLN02TAHY, VC06->VCLN02PMHY, VC07->VCLN02OSHY (VC03 y VC08 no aparecen en el ejemplo). Falta la tabla de referencia real armada aparte (hoy está implícita solo en el ejemplo) y falta la de VD00/VE00 por completo."
+    },
+    "ZUSA": {
+      "estado": "Fuera de alcance por ahora, según indicación explícita de Seba.",
+      "tipo_material": "ZMAQ",
+      "rango_material": "20000000-29999999 (mismo bloque que ZMAQ, a confirmar si comparte rango con VC/VD/VE o es independiente)"
+    }
+  }
+}

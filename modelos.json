@@ -1,0 +1,42 @@
+{
+  "id": "modelos",
+  "nombre": "Modelos",
+  "descripcion": "Ampliación de vehículos/modelos nuevos a los centros SAP correspondientes según fabricante.",
+
+  "input_sheet": "INPUT",
+  "input_columns": [
+    "FILIAL CODIGO",
+    "UNIDAD DE MEDIDA",
+    "TEXTO BREVE",
+    "GRUPO ARTICULO",
+    "NOMBRE JERARQUIA",
+    "JERARQUIA",
+    "MARCA CODIGO",
+    "NOMBRE MARCA",
+    "FABRICANTE CODIGO",
+    "NOMBRE FABRICANTE", 
+    "NPF",
+    "NPF:FABRICANTE"
+  ],
+
+  "reference_file": "data/reference/modelos_centros_ampliacion.xlsx",
+  "reference_sheet": null,
+
+  "key_input": "FABRICANTE CODIGO",
+  "key_reference": "COD_FABRICANTE",
+  "fallback_value": "F9999",
+
+  "output_columns_from_reference": [
+    "CENTRO",
+    "COD_CEBE",
+    "NOM_CODIGO_CEBE"
+  ],
+
+  "correlativo": {
+    "enabled": true,
+    "nombre": "material_global",
+    "column_name": "NUMERO MATERIAL",
+    "range_min": 1,
+    "range_max": 5000000
+  }
+}
