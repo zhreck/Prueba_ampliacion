@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="panel">
-  <h2>Sube el Excel de input</h2>
+
+  <div class="step">
+    <span class="step-num">1</span>
+    <h2>Sube el Excel de input</h2>
+  </div>
   <p class="lede">
     Selecciona el tipo de material y sube el Excel con la fila (o filas) del input.
     El sistema completa automáticamente el centro, el cebe y el número de material —
@@ -10,11 +14,12 @@
 
   <form action="{{ url_for('procesar') }}" method="post" enctype="multipart/form-data">
     <fieldset>
-      <label>Tipo de ampliación</label>
       {% for tipo in tipos %}
         <label class="tipo-option">
-          <input type="radio" name="tipo" value="{{ tipo.id }}" {% if loop.first %}checked{% endif %}>
-          {{ tipo.nombre }}
+          <div class="tipo-option-head">
+            <input type="radio" name="tipo" value="{{ tipo.id }}" {% if loop.first %}checked{% endif %}>
+            <span class="tipo-name">{{ tipo.nombre }}</span>
+          </div>
           <span class="desc">
             {{ tipo.descripcion }}
             — <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
@@ -23,20 +28,64 @@
       {% endfor %}
     </fieldset>
 
+    <div class="step">
+      <span class="step-num">2</span>
+      <h2>Archivo</h2>
+    </div>
     <fieldset>
-      <label for="archivo">Archivo Excel (.xlsx)</label>
-      <input type="file" id="archivo" name="archivo" accept=".xlsx" required>
+      <label class="dropzone" for="archivo" id="dropzone">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12m0 0l-4-4m4 4l4-4"></path>
+          <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"></path>
+        </svg>
+        <span class="dropzone-filename" id="archivo-nombre">Ningún archivo seleccionado</span>
+        <span class="dropzone-hint">Arrastra el Excel (.xlsx) aquí, o haz clic para elegirlo</span>
+      </label>
+      <input type="file" id="archivo" name="archivo" accept=".xlsx" required class="visually-hidden">
     </fieldset>
 
+    <div class="step">
+      <span class="step-num">3</span>
+      <h2>Formato de salida</h2>
+    </div>
     <fieldset>
-      <label class="tipo-option">
+      <label class="tipo-option check-option">
         <input type="checkbox" id="generar_sap" name="generar_sap">
-        Generar formato de carga SAP (MM01)
-        <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input. Los campos que el negocio todavía no confirmó quedan en blanco, listados en una hoja aparte "PENDIENTES".</span>
+        <div>
+          <span class="tipo-name">Generar formato de carga SAP (MM01)</span>
+          <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input. Los campos que el negocio todavía no confirmó quedan en blanco, listados en una hoja aparte "PENDIENTES".</span>
+        </div>
       </label>
     </fieldset>
 
     <button type="submit">Generar ampliación</button>
   </form>
 </div>
+
+<script>
+  (function () {
+    var input = document.getElementById("archivo");
+    var zona = document.getElementById("dropzone");
+    var nombre = document.getElementById("archivo-nombre");
+
+    function mostrarNombre() {
+      nombre.textContent = input.files.length ? input.files[0].name : "Ningún archivo seleccionado";
+    }
+
+    input.addEventListener("change", mostrarNombre);
+
+    ["dragover", "dragleave", "drop"].forEach(function (evento) {
+      zona.addEventListener(evento, function (e) { e.preventDefault(); });
+    });
+    zona.addEventListener("dragover", function () { zona.classList.add("dropzone-hover"); });
+    zona.addEventListener("dragleave", function () { zona.classList.remove("dropzone-hover"); });
+    zona.addEventListener("drop", function (e) {
+      zona.classList.remove("dropzone-hover");
+      if (e.dataTransfer.files.length) {
+        input.files = e.dataTransfer.files;
+        mostrarNombre();
+      }
+    });
+  })();
+</script>
 {% endblock %}

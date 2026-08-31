@@ -4,9 +4,9 @@
 <div class="stat-row">
   {% for tipo_id, estado in estados %}
     <div class="stat">
-      <div class="label">{{ tipo_id }} · rango {{ estado.range_min }}–{{ estado.range_max }}</div>
-      <div class="value">{{ estado.ultimo_valor }}</div>
-      <div class="label">{{ estado.disponibles }} disponibles</div>
+      <div class="stat-label">{{ tipo_id }} · rango {{ "{:,}".format(estado.range_min).replace(",", ".") }}–{{ "{:,}".format(estado.range_max).replace(",", ".") }}</div>
+      <div class="stat-value">{{ "{:,}".format(estado.ultimo_valor).replace(",", ".") }}</div>
+      <div class="stat-sub">{{ "{:,}".format(estado.disponibles).replace(",", ".") }} disponibles</div>
     </div>
   {% endfor %}
 </div>
@@ -30,8 +30,8 @@
         <td class="num">{{ r.numero_asignado }}</td>
         <td>{{ r.tipo }}</td>
         <td>{{ r.texto_breve }}</td>
-        <td>{{ r.fabricante_codigo }}</td>
-        <td>{{ r.fecha }}</td>
+        <td class="num">{{ r.fabricante_codigo }}</td>
+        <td class="num">{{ r.fecha }}</td>
       </tr>
       {% else %}
       <tr><td colspan="5">Todavía no se ha generado ninguna ampliación.</td></tr>
