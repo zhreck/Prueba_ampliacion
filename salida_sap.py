@@ -37,8 +37,9 @@ Reglas universales (no dependen de la plantilla, aplican siempre):
   "Jerarquía productos\\n MARA-PRDHA\\nReplicar en\\nMVKE-PRODH". Esto SÍ está resuelto
   en confirmacion_campos_parsed.json (nota: "Tomar el dato que se registró en
   MARA-PRDHA"), aunque el parser lo haya agrupado bajo needs_review_or_lookup.
-- "Categoría Clase", "Clase" y "Unidad medida pedido" quedan SIEMPRE vacíos, para
-  las tres plantillas. Seba confirmó esto directamente (arreglos_notas.txt) y pisa
+- "Categoría Clase", "Clase", "Unidad medida pedido" y "Unidad med.salida" quedan
+  SIEMPRE vacíos, para las tres plantillas. Seba confirmó esto directamente
+  (arreglos_notas.txt) y pisa
   lo que dice confirmacion_campos_parsed.json (que trae "300"/"ZMAQUINAS"/"UN" en
   "defaults" para estos campos) — el ejemplo real de ZMAQ ya los traía vacíos.
 """
@@ -66,7 +67,7 @@ TRANSACCION_VALOR = "MM01"
 
 # Confirmado directamente por Seba (arreglos_notas.txt): estos campos van SIEMPRE
 # vacíos en las tres plantillas, pase lo que diga confirmacion_campos_parsed.json.
-CAMPOS_FORZAR_VACIO = {"Categoría Clase", "Clase", "Unidad medida pedido"}
+CAMPOS_FORZAR_VACIO = {"Categoría Clase", "Clase", "Unidad medida pedido", "Unidad med.salida"}
 
 # Filiales que ya tienen tipo de material y plantilla configurados. ZUSA queda
 # fuera a propósito (fuera de alcance, ver docs/mapeo_filiales.json).
