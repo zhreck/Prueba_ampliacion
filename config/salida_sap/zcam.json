@@ -5,6 +5,7 @@
   "tipo_material": "ZCAM",
   "bloque_confirmacion_sap": "ZCAM",
   "rango_correlativo_nombre": "zcam_material",
+  "categoria_valoracion": { "grupo": "ZCAM" },
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -31,7 +32,7 @@
     "Centro->Cebe: ya existe en data/reference/centros_ampliacion.xlsx (32 filas para COD_SOCIEDAD==VA00, 4 fabricantes: DONG FENG DFCV/F0001, FAW/F0028, INTERNATIONAL/F0006, DONG FENG DFAC/F0022, cubriendo VA00..VA07). OJO: no hay fila F9999 (comodín 'TODAS/OTRAS MARCAS') para VA00 en la tabla — un fabricante de camión que no sea uno de esos 4 se omite con aviso, no cae a ningún comodín.",
     "Rango de material confirmado: 30000000-39999999.",
     "Grupo de compras: 'Q03' solo se confirmó para ZMAQ/TTM (arreglos_notas.txt), no para ZCAM -> sigue en blanco y se lista en la hoja PENDIENTES hasta que Seba confirme el valor para camiones.",
-    "Categoría valoración: sigue pendiente ('falta definir y mapear') -> queda en blanco y se lista en la hoja PENDIENTES.",
+    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZCAM: DFCV, INTERNATIONAL, DFAC, FAW y el comodín F9999, aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Un fabricante fuera de esa lista queda vacío.",
     "Sector y los flags de 'Vista ...' (Datos Basicos, Vista contabilidad, Vista compras, etc.) NO están confirmados para ZCAM (a diferencia de ZMAQ, que tiene un ejemplo real). Quedan en blanco hasta tener un ejemplo de salida real de ZCAM o confirmación explícita de negocio.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ)."
   ]

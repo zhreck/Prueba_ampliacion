@@ -5,6 +5,7 @@
   "tipo_material": "ZMAQ",
   "bloque_confirmacion_sap": "ZMAQ_ttm",
   "rango_correlativo_nombre": "zmaq_material",
+  "categoria_valoracion": { "grupo": "ZMAQ" },
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -46,7 +47,7 @@
   "notas_pendientes": [
     "Centro->Cebe: ahora sale de data/reference/centros_ampliacion.xlsx (tabla única confirmada, filtrada por FILIAL CODIGO==COD_SOCIEDAD), que cubre VC00 (9 centros, incl. VC03/VC08), VD00 (9 centros, un solo fabricante LIUGONG/F0016, sin comodín F9999) y VE00 (2 centros, un solo fabricante MAXIMAL/F0010, sin comodín). Un fabricante que no esté en la tabla para VD00/VE00 se omite con aviso, no se inventa nada.",
     "⚠️ DISCREPANCIA DE DATOS a confirmar con negocio: para VC00 + HYSTER/F0012, docs/ejemplo_output_ZMAQ_VC00.xlsx (salida real ya usada en producción) trae Centro de beneficio con sufijo '02' (ej. VCLN02QCHY), pero data/reference/centros_ampliacion.xlsx (la tabla que Seba confirmó como la 'de verdad') trae sufijo '01' (VCLN01QCHY) para el mismo Centro+Fabricante. Se está usando el valor de la tabla de referencia ('01') por ser la fuente viva/confirmada, pero falta que Seba confirme si el ejemplo quedó desactualizado o si la tabla tiene un error.",
-    "Categoría valoración: sigue pendiente ('falta definir y mapear', confirmado por Seba en arreglos_notas.txt) -> queda en blanco y se lista en la hoja PENDIENTES.",
+    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZMAQ: HMK, HYSTER, LIUGONG, MAXIMAL, TERBERG y el comodín F9999 — confirmado con el ejemplo real, F0012/HYSTER=1410). Un fabricante fuera de esa lista queda vacío y se reporta en el aviso 'sin categoría de valoración'.",
     "Grupo de compras='Q03' aplica solo a esta plantilla (TTM: VC00/VD00/VE00) según arreglos_notas.txt — en ZCAM y ZVHE ese campo sigue pendiente hasta que Seba confirme lo mismo para ellas.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal en salida_sap.py), evidenciado solo con VC00. Si alguna filial de ZMAQ tuviera una Org. Ventas distinta de su propio código, avisar para ajustar."
   ]

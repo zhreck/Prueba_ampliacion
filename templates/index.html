@@ -24,6 +24,9 @@
           <span class="desc">
             {{ tipo.descripcion }}
             — <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
+            {% if tipo.tiene_diccionario %}
+              — <a class="plantilla-link" href="{{ url_for('diccionario', tipo_id=tipo.id) }}">Descargar diccionario de códigos</a>
+            {% endif %}
           </span>
         </label>
       {% endfor %}

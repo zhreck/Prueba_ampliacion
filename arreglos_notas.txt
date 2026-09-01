@@ -1,11 +1,9 @@
+1. agregar un boton para poder descargar diccionario en caso de no tener los codigos de los 
+2. deje el archivo carVal en data/reference/catVal ahi estan las categorias de valoracion
+estas tienen que ver con la marca, si es de marca faw tiene que ir la categoria que corresponda 
+3. al momento de recargar la pagina que desaparezcan todas la alertas
+4. eliminar archivos que ya no sean necesarios 
 
-1. agregar repuestos en tipo de ampliacion 
-2. cambiar el nombre de  tipo de ampliacion a 'Material a ampliar'
-opciones Modelos, repuestos ZRP1 normalmente (En repuestos tener un flag que diga seriados 
-y dar una advertencia que los materiales que se van a crear son todos seriados ZRP3)
-3. al seleccionar repuestos no sales una confirmacion de seriados
-4. faltan centros a donde se amplia (ejemplo te pase Faw y solo esta en el centro VF00, pero tienen que estar en muchos
-mas)
-5. 
-
-
+5. dependiendo de la filial la catval cambia en repuestos, si es de la filial VA00 estamos hablando de camiones,
+si es de la filial VF00, y si es de las filiales VC00, VD00, VE00 estamos hablando de maquinarias,
+para que lo tengas en cuenta cuando el usuario de el input 

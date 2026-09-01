@@ -67,6 +67,10 @@ BASE_DIR = Path(__file__).parent
 CONFIG_DIR = BASE_DIR / "config" / "salida_sap"
 HEADER_PATH = BASE_DIR / "docs" / "header_151_columnas.json"
 CONFIRMACION_PATH = BASE_DIR / "docs" / "confirmacion_campos_parsed.json"
+CATEGORIA_VALORACION_PATH = BASE_DIR / "config" / "categoria_valoracion.json"
+
+COL_CATEGORIA_VALORACION = "Categoría valoración"
+COL_FABRICANTE = "Fabricante"
 
 COL_TRANSACCION = "Transaccion"
 COL_MATERIAL = "Material"
@@ -108,6 +112,12 @@ def cargar_header_151() -> List[str]:
     """Carga la lista de 151 nombres de columnas SAP, en orden exacto y CON duplicados."""
     with open(HEADER_PATH, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def cargar_categoria_valoracion() -> dict:
+    """Carga config/categoria_valoracion.json: {grupo: {cod_fabricante: cod_carVal}}."""
+    with open(CATEGORIA_VALORACION_PATH, encoding="utf-8") as fh:
+        return json.load(fh).get("grupos", {})
 
 
 def cargar_confirmacion_sap() -> dict:
@@ -244,6 +254,8 @@ def aplicar_plantilla_sap(
 
     df_sap = pd.DataFrame(resultado_filas, columns=header)
 
+    fabricantes_sin_categoria = _resolver_categoria_valoracion(df_sap, plantilla, primeras)
+
     metadatos = {
         "tipo_material": tipo_material,
         "bloque": bloque_key,
@@ -252,9 +264,40 @@ def aplicar_plantilla_sap(
         "numeros_asignados": numeros_asignados,
         "campos_pendientes": campos_pendientes,
         "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, plantilla, bloque, primeras),
+        "fabricantes_sin_categoria_valoracion": fabricantes_sin_categoria,
     }
 
     return df_sap, metadatos
+
+
+def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:
+    """
+    Llena "Categoría valoración" según el fabricante de cada fila, usando
+    config/categoria_valoracion.json (grupo confirmado en la plantilla, ej.
+    "ZMAQ"). Solo pone valores confirmados sin ambigüedad — un fabricante sin
+    entrada en ese grupo queda con el campo vacío y se reporta en la lista que
+    devuelve esta función (ver docs/categoria_valoracion_pendientes.md).
+    """
+    cfg = plantilla.get("categoria_valoracion")
+    if not cfg or df_sap.empty:
+        return []
+
+    tabla = cargar_categoria_valoracion().get(cfg["grupo"], {})
+    idx_categoria = primeras[COL_CATEGORIA_VALORACION]
+    idx_fabricante = primeras[COL_FABRICANTE]
+
+    sin_categoria = set()
+    for i in range(len(df_sap)):
+        fabricante = str(df_sap.iat[i, idx_fabricante]).strip()
+        if not fabricante:
+            continue
+        valor = tabla.get(fabricante)
+        if valor:
+            df_sap.iat[i, idx_categoria] = valor
+        else:
+            sin_categoria.add(fabricante)
+
+    return sorted(sin_categoria)
 
 
 def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]:
@@ -269,6 +312,12 @@ def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]
     función ni la lista needs_review_or_lookup de confirmacion_campos_parsed.json.
     """
     resueltos_aparte = {COL_TRANSACCION, COL_MATERIAL, COL_JERARQUIA_SD} | CAMPOS_FORZAR_VACIO
+    if plantilla.get("categoria_valoracion"):
+        # No es un "pendiente" de plantilla completa: se resuelve fila por fila
+        # según el fabricante (ver _resolver_categoria_valoracion). Los
+        # fabricantes que no tengan categoría confirmada se reportan aparte,
+        # en metadatos["fabricantes_sin_categoria_valoracion"].
+        resueltos_aparte = resueltos_aparte | {COL_CATEGORIA_VALORACION}
     resueltos_por_plantilla = (
         set(plantilla.get("defaults_confirmados_extra", {}).keys())
         | set(plantilla.get("campos_desde_ampliado", {}).keys())

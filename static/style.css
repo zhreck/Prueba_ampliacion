@@ -266,6 +266,29 @@ button {
 
 button:hover { background: var(--accent-hover); }
 
+.descarga-boton {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #FFFFFF;
+  border-radius: 8px;
+  padding: 12px 24px;
+  text-decoration: none;
+}
+
+.descarga-boton:hover { background: var(--accent-hover); }
+
+.volver {
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.volver a { color: var(--ink-dim); }
+.volver a:hover { color: var(--accent); }
+
 .flash {
   border-radius: 6px;
   padding: 11px 14px;

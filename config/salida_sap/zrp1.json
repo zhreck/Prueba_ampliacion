@@ -3,6 +3,7 @@
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp1.xlsx, un ejemplo de salida real de UN repuesto (F0012/HYSTER, VC00-VC07). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP1",
   "rango_correlativo_nombre": "repuestos_material",
+  "categoria_valoracion": { "grupo": "ZREP" },
   "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py): Seba lo dio para poder avanzar, pero todavía no confirma el punto de partida real — ya hay materiales creados en SAP y no sabe en cuál se quedó. Este contador puede pisar números ya usados en producción hasta que Seba confirme el inicio real; avisar antes de usar esto para cargar a SAP de verdad.",
   "canales_distribucion": [
     "20",
@@ -60,13 +61,10 @@
     "Tipo de número del Numero de artículo Europeo": "Z1"
   },
   "_defaults_confirmados_extra_nota": "Todos extraídos del único ejemplo real disponible (VC00, fabricante F0012). Sector=30 y Grupo tipos posición=NORM (no VMS0) difieren de Modelos/Maquinaria — Repuestos usa su propio esquema. 'Grupo de compras'='Q02' está evidenciado solo para VC00; podría no generalizar a otras filiales de Repuestos (falta confirmar).",
-  "pendientes_extra": [
-    "Categoría valoración"
-  ],
-  "_pendientes_nota": "Igual que en las otras plantillas: 'falta definir y mapear' (confirmado por Seba). En el ejemplo real aparece un valor (1600) pero es un dato histórico de un material puntual, no una regla general.",
   "notas_pendientes": [
     "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP: no encontramos un campo de número de serie específico entre las 151 columnas (los números de serie en SAP normalmente se gestionan aparte de la creación del material). Si Seba espera que vaya en algún campo puntual, avisar para agregarlo.",
-    "SERIADO='X' en el input determina que ese material se genera como ZRP3 en vez de ZRP1 (ver app.py, split por fila antes de llamar a esta función) — no es un campo de esta plantilla."
+    "SERIADO='X' en el input determina que ese material se genera como ZRP3 en vez de ZRP1 (ver app.py, split por fila antes de llamar a esta función) — no es un campo de esta plantilla.",
+    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZREP), salvo HYSTER/F0012 — calVal.xlsx trae dos filas duplicadas para HYSTER (1600 y 1620) y no se pudo determinar cuál es la correcta, así que ese fabricante queda sin categoría (ver docs/categoria_valoracion_pendientes.md). Justo es el fabricante del único ejemplo real que tenemos para ZRP1."
   ]
 }

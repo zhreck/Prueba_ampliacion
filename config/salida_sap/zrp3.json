@@ -3,6 +3,7 @@
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp3.xlsx, un ejemplo de salida real de DOS repuestos (VA00, fabricantes F0058/F0028). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP3",
   "rango_correlativo_nombre": "repuestos_material",
+  "categoria_valoracion": { "grupo": "ZREP" },
   "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py) — comparte contador con zrp1.json a propósito (mismo universo de materiales Repuestos, Seba confirmó que da lo mismo si se repite un número entre distintos tipos de material). Falta que Seba confirme el punto de partida real más adelante.",
   "canales_distribucion": [
     "20",
@@ -58,12 +59,10 @@
     "Tipo de número del Numero de artículo Europeo": "Z1"
   },
   "_defaults_confirmados_extra_nota": "Extraídos del único ejemplo real disponible (VA00, 2 materiales). 'Perfil Número de Serie'='Z001' es la diferencia clave con ZRP1 (queda vacío ahí) — es lo que hace que el material sea tratado como seriado en SAP. 'Almacén' queda vacío a propósito (en el ejemplo real de ZRP3 viene vacío, a diferencia de ZRP1 donde es '1000'). 'Grupo de compras'='M02' está evidenciado solo para VA00 — podría no generalizar a otras filiales (falta confirmar); distinto del 'Q02' de ZRP1 porque ese ejemplo era de otra filial (VC00), así que la diferencia podría deberse a la filial y no al tipo de material.",
-  "pendientes_extra": [
-    "Categoría valoración"
-  ],
   "notas_pendientes": [
     "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP todavía — ver la misma nota en zrp1.json.",
-    "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material') a propósito — Seba confirmó que da lo mismo si dos materiales de distinto tipo (ZRP1/ZRP3) comparten número."
+    "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material') a propósito — Seba confirmó que da lo mismo si dos materiales de distinto tipo (ZRP1/ZRP3) comparten número.",
+    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZREP), salvo HYSTER/F0012 (duplicado en calVal.xlsx) y DFAC/FAW (F0022/F0028, usados tanto para camiones como para vehículos, la categoría depende de la filial y no solo del fabricante) — ver docs/categoria_valoracion_pendientes.md."
   ]
 }

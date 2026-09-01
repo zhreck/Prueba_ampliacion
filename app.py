@@ -1,8 +1,9 @@
 import io
+import uuid
 from datetime import datetime
 
 import pandas as pd
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for, abort
 
 import engine
 import correlativo
@@ -10,6 +11,16 @@ import salida_sap
 
 app = Flask(__name__)
 app.secret_key = "cambiar-esta-clave-en-produccion"
+
+# Archivos generados listos para descargar, en memoria (proceso único de Flask
+# dev server — se pierden si se reinicia, es intencional: son de un solo uso).
+# Evita el patrón "flash + send_file directo": si /procesar devolviera el
+# archivo de una, los avisos quedarían pegados en la sesión sin mostrarse
+# (send_file no renderiza plantilla) y reaparecerían solos en cualquier
+# recarga posterior de página, sin relación con lo que el usuario hizo.
+# Con Post/Redirect/Get, los avisos se muestran y se consumen una sola vez,
+# en la página de resultado, y la descarga es un segundo click aparte.
+_DESCARGAS_PENDIENTES: dict[str, tuple[bytes, str]] = {}
 
 
 @app.route("/", methods=["GET"])
@@ -34,6 +45,32 @@ def plantilla(tipo_id):
         buffer,
         as_attachment=True,
         download_name=f"plantilla_{tipo_id}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/diccionario/<tipo_id>")
+def diccionario(tipo_id):
+    try:
+        cfg = engine.cargar_config(tipo_id)
+    except engine.TipoNoEncontradoError as e:
+        flash(str(e), "error")
+        return redirect(url_for("index"))
+
+    diccionario_cfg = cfg.get("diccionario_referencia")
+    if not diccionario_cfg:
+        flash(f"El tipo '{tipo_id}' no tiene un diccionario de referencia configurado.", "error")
+        return redirect(url_for("index"))
+
+    origen_path = engine.BASE_DIR / diccionario_cfg["reference_file"]
+    if not origen_path.exists():
+        flash(f"Falta el archivo de diccionario: {origen_path}", "error")
+        return redirect(url_for("index"))
+
+    return send_file(
+        origen_path,
+        as_attachment=True,
+        download_name=origen_path.name,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
@@ -91,6 +128,7 @@ def procesar():
                     partes_sap = []
                     pendientes = {}
                     obligatorios_vacios = []
+                    fabricantes_sin_categoria = set()
                     tipos_material_usados = []
                     for tipo_material_sap, mask in [("ZRP3", es_seriado), ("ZRP1", ~es_seriado)]:
                         subset = resultado_df[mask]
@@ -100,6 +138,7 @@ def procesar():
                         partes_sap.append(df_parte)
                         pendientes.update(meta_parte.get("campos_pendientes", {}))
                         obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
+                        fabricantes_sin_categoria.update(meta_parte.get("fabricantes_sin_categoria_valoracion", []))
                         tipos_material_usados.append(tipo_material_sap)
                     df_salida = pd.concat(partes_sap, ignore_index=True)
                     nombre_sheet = "SAP_" + "_".join(tipos_material_usados)
@@ -112,6 +151,13 @@ def procesar():
                     nombre_sheet = f"SAP_{tipo_material_sap}"
                     pendientes = metadatos_sap.get("campos_pendientes", {})
                     obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
+                    fabricantes_sin_categoria = set(metadatos_sap.get("fabricantes_sin_categoria_valoracion", []))
+
+                if fabricantes_sin_categoria:
+                    avisos.append(
+                        f"⚠️ Sin Categoría valoración confirmada para fabricante(s): "
+                        f"{', '.join(sorted(fabricantes_sin_categoria))} (ver docs/categoria_valoracion_pendientes.md)."
+                    )
 
                 if pendientes:
                     avisos.append(f"ℹ️ {len(pendientes)} columnas pendientes de negocio (ver hoja PENDIENTES).")
@@ -137,13 +183,36 @@ def procesar():
         df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
         if df_pendientes is not None:
             df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
-    buffer.seek(0)
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"
     nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
+    token = uuid.uuid4().hex
+    _DESCARGAS_PENDIENTES[token] = (buffer.getvalue(), nombre_salida)
+
+    return redirect(url_for("resultado", token=token))
+
+
+@app.route("/resultado/<token>")
+def resultado(token):
+    if token not in _DESCARGAS_PENDIENTES:
+        flash("El archivo generado ya no está disponible (probablemente ya lo descargaste). Genera la ampliación de nuevo.", "error")
+        return redirect(url_for("index"))
+    _, nombre_salida = _DESCARGAS_PENDIENTES[token]
+    return render_template("resultado.html", token=token, nombre_salida=nombre_salida)
+
+
+@app.route("/descargar/<token>")
+def descargar(token):
+    # Un solo uso: se saca del diccionario apenas se sirve, para no acumular
+    # archivos en memoria indefinidamente.
+    entrada = _DESCARGAS_PENDIENTES.pop(token, None)
+    if entrada is None:
+        abort(404)
+    contenido, nombre_salida = entrada
+
     return send_file(
-        buffer,
+        io.BytesIO(contenido),
         as_attachment=True,
         download_name=nombre_salida,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
