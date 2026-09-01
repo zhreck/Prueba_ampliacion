@@ -2,8 +2,8 @@
   "_descripcion": "Plantilla SAP para tipo ZRP1 (Repuestos NO seriados).",
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp1.xlsx, un ejemplo de salida real de UN repuesto (F0012/HYSTER, VC00-VC07). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP1",
-  "rango_correlativo_nombre": "repuestos_material_PENDIENTE",
-  "_rango_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO. Los ejemplos muestran números como 50040000/50013418/50013875, pero eso no confirma un rango — falta que Seba entregue min/max real (igual que se hizo para ZVHE). Mientras 'rango_correlativo_nombre' contenga 'PENDIENTE' y no esté registrado en correlativo.py, salida_sap.aplicar_plantilla_sap() bloquea con error explícito.",
+  "rango_correlativo_nombre": "repuestos_material",
+  "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py): Seba lo dio para poder avanzar, pero todavía no confirma el punto de partida real — ya hay materiales creados en SAP y no sabe en cuál se quedó. Este contador puede pisar números ya usados en producción hasta que Seba confirme el inicio real; avisar antes de usar esto para cargar a SAP de verdad.",
   "canales_distribucion": [
     "20",
     "30"
@@ -65,7 +65,7 @@
   ],
   "_pendientes_nota": "Igual que en las otras plantillas: 'falta definir y mapear' (confirmado por Seba). En el ejemplo real aparece un valor (1600) pero es un dato histórico de un material puntual, no una regla general.",
   "notas_pendientes": [
-    "⚠️ Sin rango de número de material confirmado — bloqueado hasta que Seba lo entregue.",
+    "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP: no encontramos un campo de número de serie específico entre las 151 columnas (los números de serie en SAP normalmente se gestionan aparte de la creación del material). Si Seba espera que vaya en algún campo puntual, avisar para agregarlo.",
     "SERIADO='X' en el input determina que ese material se genera como ZRP3 en vez de ZRP1 (ver app.py, split por fila antes de llamar a esta función) — no es un campo de esta plantilla."
   ]

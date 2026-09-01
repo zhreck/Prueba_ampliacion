@@ -6,6 +6,12 @@ Soporta múltiples rangos con nombres distintos:
 - "zmaq_material" (20000000 - 29999999): Maquinarias SAP
 - "zcam_material" (30000000 - 39999999): Camiones SAP
 - "zvhe_material" (40000000 - 49999999): Automotriz SAP
+- "repuestos_material" (50040000 - 90000000): Repuestos SAP (ZRP1/ZRP3,
+  comparten rango — son el mismo universo de materiales, solo cambia si son
+  seriados o no). Rango PROVISORIO: Seba todavía no confirma el punto de
+  partida real (ya hay materiales creados en SAP y no sabe en cuál se quedó),
+  así que este contador puede pisar números ya usados en producción hasta que
+  lo confirme.
 
 Cada tipo de material puede tener su propio correlativo nombrado.
 """
@@ -27,6 +33,7 @@ DEFAULT_RANGOS = {
     "zmaq_material": {"min": 20000000, "max": 29999999, "descripcion": "ZMAQ - Maquinarias (VC00, VD00, VE00)"},
     "zcam_material": {"min": 30000000, "max": 39999999, "descripcion": "ZCAM - Camiones (VA00)"},
     "zvhe_material": {"min": 40000000, "max": 49999999, "descripcion": "ZVHE - Automotriz (VF00)"},
+    "repuestos_material": {"min": 50040000, "max": 90000000, "descripcion": "ZRP1/ZRP3 - Repuestos (provisorio, falta confirmar punto de partida real)"},
 }
 
 

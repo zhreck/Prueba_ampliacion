@@ -2,8 +2,8 @@
   "_descripcion": "Plantilla SAP para tipo ZRP3 (Repuestos SERIADOS).",
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp3.xlsx, un ejemplo de salida real de DOS repuestos (VA00, fabricantes F0058/F0028). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP3",
-  "rango_correlativo_nombre": "repuestos_material_PENDIENTE",
-  "_rango_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO — mismo bloqueo que zrp1.json (comparten rango: es el mismo material Repuestos, solo cambia si es seriado o no). Falta que Seba entregue min/max real.",
+  "rango_correlativo_nombre": "repuestos_material",
+  "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py) — comparte contador con zrp1.json a propósito (mismo universo de materiales Repuestos, Seba confirmó que da lo mismo si se repite un número entre distintos tipos de material). Falta que Seba confirme el punto de partida real más adelante.",
   "canales_distribucion": [
     "20",
     "30"
@@ -62,8 +62,8 @@
     "Categoría valoración"
   ],
   "notas_pendientes": [
-    "⚠️ Sin rango de número de material confirmado — bloqueado hasta que Seba lo entregue.",
+    "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP todavía — ver la misma nota en zrp1.json.",
-    "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material_PENDIENTE') porque es el mismo universo de materiales Repuestos, solo cambia el flag SERIADO — si Seba confirma que necesitan rangos separados, hay que separar este nombre."
+    "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material') a propósito — Seba confirmó que da lo mismo si dos materiales de distinto tipo (ZRP1/ZRP3) comparten número."
   ]
 }
