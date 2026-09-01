@@ -1,9 +1,4 @@
-1. agregar un boton para poder descargar diccionario en caso de no tener los codigos de los 
-2. deje el archivo carVal en data/reference/catVal ahi estan las categorias de valoracion
-estas tienen que ver con la marca, si es de marca faw tiene que ir la categoria que corresponda 
-3. al momento de recargar la pagina que desaparezcan todas la alertas
-4. eliminar archivos que ya no sean necesarios 
 
-5. dependiendo de la filial la catval cambia en repuestos, si es de la filial VA00 estamos hablando de camiones,
+1. dependiendo de la filial la catval cambia en repuestos, si es de la filial VA00 estamos hablando de camiones,
 si es de la filial VF00, y si es de las filiales VC00, VD00, VE00 estamos hablando de maquinarias,
 para que lo tengas en cuenta cuando el usuario de el input 

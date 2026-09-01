@@ -1,6 +1,6 @@
 {
   "_fuente": "data/reference/calVal.xlsx — tabla cod_carVal / referencia_catVal / Descripcion que subió Seba.",
-  "_nota": "Mapea (grupo de categoría, código de fabricante) -> código de Categoría valoración. 'ZVEH' es el grupo que calVal.xlsx usa para Automotriz (equivalente a la filial VF00/tipo material ZVHE del resto del sistema — probablemente el mismo nombre con las letras traspuestas en el archivo original, no dos cosas distintas). 'ZREP' cubre Repuestos completo (ZRP1 y ZRP3 comparten categoría, no depende de si es seriado). Solo se cargan acá las combinaciones SIN ambigüedad — ver docs/categoria_valoracion_pendientes.md para lo que quedó afuera y por qué.",
+  "_nota": "Mapea (grupo de categoría, código de fabricante) -> código de Categoría valoración. 'ZVEH' es el grupo que calVal.xlsx usa para Automotriz (equivalente a la filial VF00/tipo material ZVHE del resto del sistema — probablemente el mismo nombre con las letras traspuestas en el archivo original, no dos cosas distintas). Repuestos (ZRP1/ZRP3) no usa un único grupo 'ZREP' plano: la categoría depende del NEGOCIO de la filial de esa fila (confirmado por Seba en arreglos_notas.txt) — Camiones si es VA00, Maquinarias si es VC00/VD00/VE00, Vehículos/Motos si es VF00 — por eso 'ZREP' está partido en 3 sub-grupos, elegidos en salida_sap.py según 'Org. Ventas' (que ya es el código de filial de la fila). Solo se cargan acá las combinaciones SIN ambigüedad — ver docs/categoria_valoracion_pendientes.md para lo que quedó afuera y por qué.",
 
   "grupos": {
     "ZVEH": {
@@ -26,18 +26,30 @@
       "F0016": "1420",
       "F9999": "1470"
     },
-    "ZREP": {
+    "ZREP_CAMIONES": {
       "F0001": "1520",
       "F0006": "1500",
+      "F0022": "1520",
+      "F0028": "1510",
+      "F9999": "1530"
+    },
+    "ZREP_MAQUINARIAS": {
       "F0010": "1630",
+      "F0012": "1600",
       "F0014": "1590",
       "F0015": "1640",
       "F0016": "1610",
+      "F9999": "1660"
+    },
+    "ZREP_VEHICULOS": {
       "F0019": "1580",
       "F0020": "1550",
+      "F0021": "1700",
+      "F0022": "1720",
       "F0023": "1570",
       "F0025": "1560",
       "F0027": "1540",
+      "F0028": "1670",
       "F0029": "1710"
     }
   }

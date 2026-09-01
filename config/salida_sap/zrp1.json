@@ -3,7 +3,15 @@
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp1.xlsx, un ejemplo de salida real de UN repuesto (F0012/HYSTER, VC00-VC07). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP1",
   "rango_correlativo_nombre": "repuestos_material",
-  "categoria_valoracion": { "grupo": "ZREP" },
+  "categoria_valoracion": {
+    "grupos_por_filial": {
+      "VA00": "ZREP_CAMIONES",
+      "VC00": "ZREP_MAQUINARIAS",
+      "VD00": "ZREP_MAQUINARIAS",
+      "VE00": "ZREP_MAQUINARIAS",
+      "VF00": "ZREP_VEHICULOS"
+    }
+  },
   "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py): Seba lo dio para poder avanzar, pero todavía no confirma el punto de partida real — ya hay materiales creados en SAP y no sabe en cuál se quedó. Este contador puede pisar números ya usados en producción hasta que Seba confirme el inicio real; avisar antes de usar esto para cargar a SAP de verdad.",
   "canales_distribucion": [
     "20",
@@ -65,6 +73,6 @@
     "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP: no encontramos un campo de número de serie específico entre las 151 columnas (los números de serie en SAP normalmente se gestionan aparte de la creación del material). Si Seba espera que vaya en algún campo puntual, avisar para agregarlo.",
     "SERIADO='X' en el input determina que ese material se genera como ZRP3 en vez de ZRP1 (ver app.py, split por fila antes de llamar a esta función) — no es un campo de esta plantilla.",
-    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZREP), salvo HYSTER/F0012 — calVal.xlsx trae dos filas duplicadas para HYSTER (1600 y 1620) y no se pudo determinar cuál es la correcta, así que ese fabricante queda sin categoría (ver docs/categoria_valoracion_pendientes.md). Justo es el fabricante del único ejemplo real que tenemos para ZRP1."
+    "Categoría valoración: resuelta por fabricante y filial vía config/categoria_valoracion.json (grupos ZREP_CAMIONES/ZREP_MAQUINARIAS/ZREP_VEHICULOS, elegido según 'Org. Ventas' — confirmado por Seba en arreglos_notas.txt: VA00=Camiones, VC00/VD00/VE00=Maquinarias, VF00=Vehículos/Motos). HYSTER/F0012 -> 1600 confirmado por Seba (calVal.xlsx tenía dos filas duplicadas, 1600 y 1620, con la misma descripción)."
   ]
 }

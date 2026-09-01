@@ -3,7 +3,15 @@
   "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp3.xlsx, un ejemplo de salida real de DOS repuestos (VA00, fabricantes F0058/F0028). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
   "tipo_material": "ZRP3",
   "rango_correlativo_nombre": "repuestos_material",
-  "categoria_valoracion": { "grupo": "ZREP" },
+  "categoria_valoracion": {
+    "grupos_por_filial": {
+      "VA00": "ZREP_CAMIONES",
+      "VC00": "ZREP_MAQUINARIAS",
+      "VD00": "ZREP_MAQUINARIAS",
+      "VE00": "ZREP_MAQUINARIAS",
+      "VF00": "ZREP_VEHICULOS"
+    }
+  },
   "_rango_nota": "⚠️ RANGO PROVISORIO (50040000-90000000, correlativo.py) — comparte contador con zrp1.json a propósito (mismo universo de materiales Repuestos, Seba confirmó que da lo mismo si se repite un número entre distintos tipos de material). Falta que Seba confirme el punto de partida real más adelante.",
   "canales_distribucion": [
     "20",
@@ -63,6 +71,6 @@
     "⚠️ Rango de material PROVISORIO (50040000-90000000) — Seba todavía no confirma el punto de partida real, puede pisar materiales ya creados en SAP.",
     "NRO SERIE (columna de input) no se mapea a ninguna columna SAP todavía — ver la misma nota en zrp1.json.",
     "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material') a propósito — Seba confirmó que da lo mismo si dos materiales de distinto tipo (ZRP1/ZRP3) comparten número.",
-    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZREP), salvo HYSTER/F0012 (duplicado en calVal.xlsx) y DFAC/FAW (F0022/F0028, usados tanto para camiones como para vehículos, la categoría depende de la filial y no solo del fabricante) — ver docs/categoria_valoracion_pendientes.md."
+    "Categoría valoración: resuelta por fabricante y filial vía config/categoria_valoracion.json (grupos ZREP_CAMIONES/ZREP_MAQUINARIAS/ZREP_VEHICULOS, elegido según 'Org. Ventas' — confirmado por Seba en arreglos_notas.txt: VA00=Camiones, VC00/VD00/VE00=Maquinarias, VF00=Vehículos/Motos). DFAC/F0022 y FAW/F0028 ya no son ambiguos: se resuelven distinto según la filial de cada fila. LIFAN/F0021 usa el código de Motos (1700), por la misma clasificación ya confirmada en ZVEH."
   ]
 }

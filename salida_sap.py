@@ -273,25 +273,47 @@ def aplicar_plantilla_sap(
 def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:
     """
     Llena "Categoría valoración" según el fabricante de cada fila, usando
-    config/categoria_valoracion.json (grupo confirmado en la plantilla, ej.
-    "ZMAQ"). Solo pone valores confirmados sin ambigüedad — un fabricante sin
-    entrada en ese grupo queda con el campo vacío y se reporta en la lista que
-    devuelve esta función (ver docs/categoria_valoracion_pendientes.md).
+    config/categoria_valoracion.json. Solo pone valores confirmados sin
+    ambigüedad — un fabricante sin entrada en el grupo que corresponda queda
+    con el campo vacío y se reporta en la lista que devuelve esta función
+    (ver docs/categoria_valoracion_pendientes.md).
+
+    Dos formas de configurar "categoria_valoracion" en la plantilla:
+    - {"grupo": "ZMAQ"}: un solo grupo fijo (Modelos — cada plantilla ya es
+      de una sola filial/negocio).
+    - {"grupos_por_filial": {"VA00": "ZREP_CAMIONES", ...}}: el grupo depende
+      del negocio de la filial de cada fila (Repuestos: un mismo archivo
+      puede traer materiales de varias filiales). Se lee de "Org. Ventas",
+      que la regla universal ya deja igual al código de filial de la fila.
     """
     cfg = plantilla.get("categoria_valoracion")
     if not cfg or df_sap.empty:
         return []
 
-    tabla = cargar_categoria_valoracion().get(cfg["grupo"], {})
+    todos_los_grupos = cargar_categoria_valoracion()
+    grupo_fijo = cfg.get("grupo")
+    grupos_por_filial = cfg.get("grupos_por_filial")
+
     idx_categoria = primeras[COL_CATEGORIA_VALORACION]
     idx_fabricante = primeras[COL_FABRICANTE]
+    idx_filial = primeras.get(COL_ORG_VENTAS) if grupos_por_filial else None
 
     sin_categoria = set()
     for i in range(len(df_sap)):
         fabricante = str(df_sap.iat[i, idx_fabricante]).strip()
         if not fabricante:
             continue
-        valor = tabla.get(fabricante)
+
+        if grupo_fijo:
+            nombre_grupo = grupo_fijo
+        else:
+            filial = str(df_sap.iat[i, idx_filial]).strip()
+            nombre_grupo = grupos_por_filial.get(filial)
+            if not nombre_grupo:
+                sin_categoria.add(fabricante)
+                continue
+
+        valor = todos_los_grupos.get(nombre_grupo, {}).get(fabricante)
         if valor:
             df_sap.iat[i, idx_categoria] = valor
         else:
