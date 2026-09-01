@@ -82,6 +82,12 @@ def procesar():
                     # de si el repuesto viene marcado SERIADO='X' en el input
                     # (puede haber una mezcla de ambos en el mismo archivo).
                     es_seriado = resultado_df["SERIADO"].astype(str).str.strip().str.upper() == "X"
+                    materiales_seriados = resultado_df[es_seriado].drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
+                    if materiales_seriados:
+                        avisos.append(
+                            f"🔵 SERIADO='X' -> se generan como ZRP3 (seriados), {len(materiales_seriados)} material(es): "
+                            + ", ".join(materiales_seriados)
+                        )
                     partes_sap = []
                     pendientes = {}
                     obligatorios_vacios = []
