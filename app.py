@@ -65,11 +65,6 @@ def procesar():
     nombre_sheet = "AMPLIADO"
     df_pendientes = None
 
-    cfg_tipo = engine.cargar_config(tipo_id)
-    if generar_sap and not cfg_tipo.get("sap_disponible", True):
-        flash(f"⚠️ {cfg_tipo.get('sap_no_disponible_motivo', 'Formato SAP no disponible para este tipo.')}", "error")
-        return redirect(url_for("index"))
-
     if generar_sap:
         if "FILIAL CODIGO" not in resultado_df.columns:
             flash("⚠️ Columna FILIAL CODIGO no encontrada. No se puede generar SAP.", "warning")
@@ -82,22 +77,43 @@ def procesar():
             filial = str(filiales_unicas[0]).strip()
 
             try:
-                tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
-                df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
-                    df_ampliado=resultado_df,
-                    tipo_material=tipo_material_sap,
-                )
-                nombre_sheet = f"SAP_{tipo_material_sap}"
+                if tipo_id == "repuestos":
+                    # El tipo de material SAP no depende de la filial acá, sino
+                    # de si el repuesto viene marcado SERIADO='X' en el input
+                    # (puede haber una mezcla de ambos en el mismo archivo).
+                    es_seriado = resultado_df["SERIADO"].astype(str).str.strip().str.upper() == "X"
+                    partes_sap = []
+                    pendientes = {}
+                    obligatorios_vacios = []
+                    tipos_material_usados = []
+                    for tipo_material_sap, mask in [("ZRP3", es_seriado), ("ZRP1", ~es_seriado)]:
+                        subset = resultado_df[mask]
+                        if subset.empty:
+                            continue
+                        df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
+                        partes_sap.append(df_parte)
+                        pendientes.update(meta_parte.get("campos_pendientes", {}))
+                        obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
+                        tipos_material_usados.append(tipo_material_sap)
+                    df_salida = pd.concat(partes_sap, ignore_index=True)
+                    nombre_sheet = "SAP_" + "_".join(tipos_material_usados)
+                else:
+                    tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
+                    df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
+                        df_ampliado=resultado_df,
+                        tipo_material=tipo_material_sap,
+                    )
+                    nombre_sheet = f"SAP_{tipo_material_sap}"
+                    pendientes = metadatos_sap.get("campos_pendientes", {})
+                    obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
 
-                pendientes = metadatos_sap.get("campos_pendientes", {})
                 if pendientes:
                     avisos.append(f"ℹ️ {len(pendientes)} columnas pendientes de negocio (ver hoja PENDIENTES).")
                     df_pendientes = pd.DataFrame(
                         {"Columna SAP pendiente": list(pendientes.keys()), "Motivo / nota del negocio": list(pendientes.values())}
                     )
 
-                obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
-                faltantes_no_pendientes = [c for c in obligatorios_vacios if c not in pendientes]
+                faltantes_no_pendientes = [c for c in dict.fromkeys(obligatorios_vacios) if c not in pendientes]
                 if faltantes_no_pendientes:
                     avisos.append(
                         f"⚠️ Sin dato (no pendiente de negocio, revisar tabla de referencia): "

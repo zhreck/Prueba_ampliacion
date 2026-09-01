@@ -3,25 +3,29 @@
   "nombre": "Repuestos",
   "descripcion": "Ampliación de repuestos a los centros SAP correspondientes según fabricante.",
 
-  "_nota": "Mismo esquema de input que Modelos (config/tipos/modelos.json) — Seba no dio columnas distintas para Repuestos. Reference file y disponibilidad son los propios de Repuestos que subió a data/reference/Repuestos/.",
+  "_nota": "Esquema de input real, tomado de data/reference/Repuestos/ZRP1_ZRP3.xlsx (hoja Input) — es DISTINTO al de Modelos (columnas propias, más SERIADO/NRO SERIE y ORIGINAL_ALTERNATIVO).",
 
   "input_sheet": "INPUT",
+  "columna_filial": "FILIAL",
   "input_columns": [
-    "FILIAL CODIGO",
-    "UNIDAD DE MEDIDA",
+    "FILIAL",
+    "UNIDAD MEDIDA",
     "TEXTO BREVE",
     "GRUPO ARTICULO",
     "NOMBRE JERARQUIA",
-    "JERARQUIA",
-    "MARCA CODIGO",
-    "NOMBRE MARCA",
-    "FABRICANTE CODIGO",
-    "NOMBRE FABRICANTE",
+    "CODIGO JERARQUIA",
     "NPF",
-    "NPF:Fabricante"
+    "ORIGINAL_ALTERNATIVO",
+    "CODIGO ORIGINAL_ALTERNATIVO",
+    "NOMBRE MARCA",
+    "CODIGO MARCA",
+    "NOMBRE FABRICANTE",
+    "CODIGO FABRICANTE",
+    "SERIADO",
+    "NRO SERIE"
   ],
 
-  "text_columns": ["JERARQUIA", "MARCA CODIGO", "NPF:Fabricante"],
+  "text_columns": ["CODIGO JERARQUIA", "CODIGO MARCA", "NPF", "CODIGO ORIGINAL_ALTERNATIVO", "NRO SERIE"],
 
   "reference_file": "data/reference/Repuestos/Cebe_Repuestos.xlsx",
   "reference_sheet": null,
@@ -31,7 +35,7 @@
     "value": "Venta Repuesto"
   },
 
-  "key_input": "FABRICANTE CODIGO",
+  "key_input": "CODIGO FABRICANTE",
   "key_reference": "COD_FABRICANTE",
   "fallback_value": "F9999",
   "filial_column": "COD_SOCIEDAD",
@@ -62,8 +66,5 @@
     "range_min": 1,
     "range_max": 5000000
   },
-  "_correlativo_nota": "Comparte el rango 'material_global' con Modelos (es solo un número interno de agrupación de filas ampliadas, no el número de material SAP final) — README.md ya sugería esto como opción por defecto. Si Repuestos necesita su propio rango interno más adelante, basta con cambiar 'nombre'/'range_min'/'range_max' acá.",
-
-  "sap_disponible": false,
-  "sap_no_disponible_motivo": "El formato de salida SAP (MM01) para Repuestos usa tipo de material ZRP1 (normal) o ZRP3 (seriados) — todavía no está implementado: falta la matriz de campos confirmada equivalente a docs/confirmacion_campos_parsed.json para ZRP1/ZRP3, y falta definir el flag 'seriados'. Por ahora esta ampliación solo genera el Excel con centro/cebe/número de material."
+  "_correlativo_nota": "Comparte el rango 'material_global' con Modelos (es solo un número interno de agrupación de filas ampliadas, no el número de material SAP final) — README.md ya sugería esto como opción por defecto."
 }

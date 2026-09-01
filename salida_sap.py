@@ -42,6 +42,17 @@ Reglas universales (no dependen de la plantilla, aplican siempre):
   (arreglos_notas.txt) y pisa
   lo que dice confirmacion_campos_parsed.json (que trae "300"/"ZMAQUINAS"/"UN" en
   "defaults" para estos campos) — el ejemplo real de ZMAQ ya los traía vacíos.
+
+ZRP1/ZRP3 (Repuestos, normal/seriado) no tienen bloque en
+confirmacion_campos_parsed.json — no existe un confirmacionCampos.xlsx
+equivalente para Repuestos, solo dos ejemplos de salida real
+(data/reference/Repuestos/campos_repuestos_zrp{1,3}.xlsx). "bloque_confirmacion_sap"
+queda sin definir en esas plantillas y todo sale de config/salida_sap/zrp{1,3}.json
+(defaults_confirmados_extra + campos_desde_ampliado + obligatorios propios). Además,
+ahí se evidenció que Repuestos repite cada centro una vez por Canal distribución
+(20 y 30) — plantilla config "canales_distribucion": ["20","30"] activa esa
+expansión adicional, a diferencia de Modelos/Maquinaria donde el canal es un
+único valor constante.
 """
 
 import json
@@ -60,6 +71,7 @@ CONFIRMACION_PATH = BASE_DIR / "docs" / "confirmacion_campos_parsed.json"
 COL_TRANSACCION = "Transaccion"
 COL_MATERIAL = "Material"
 COL_ORG_VENTAS = "Org. Ventas"
+COL_CANAL = "Canal distribución"
 COL_JERARQUIA_MARA = "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH"
 COL_JERARQUIA_SD = "Jerarquía de productos SD\nMVKE-PRODH"
 
@@ -83,6 +95,8 @@ TIPO_MATERIAL_A_CONFIG = {
     "ZVHE": "zvhe.json",
     "ZMAQ": "zmaq.json",
     "ZCAM": "zcam.json",
+    "ZRP1": "zrp1.json",
+    "ZRP3": "zrp3.json",
 }
 
 
@@ -172,15 +186,19 @@ def aplicar_plantilla_sap(
     plantilla = cargar_plantilla_sap(tipo_material)
     header = cargar_header_151()
     primeras = _primeras_ocurrencias(header)
-    confirmacion = cargar_confirmacion_sap()
 
     bloque_key = plantilla.get("bloque_confirmacion_sap")
-    if not bloque_key:
-        raise FormatoSAPError(f"Plantilla de {tipo_material} no especifica 'bloque_confirmacion_sap'")
-
-    bloque = confirmacion.get(bloque_key)
-    if not bloque:
-        raise FormatoSAPError(f"Bloque '{bloque_key}' no encontrado en confirmacion_campos_parsed.json")
+    if bloque_key:
+        confirmacion = cargar_confirmacion_sap()
+        bloque = confirmacion.get(bloque_key)
+        if not bloque:
+            raise FormatoSAPError(f"Bloque '{bloque_key}' no encontrado en confirmacion_campos_parsed.json")
+    else:
+        # Plantillas sin equivalente en confirmacionCampos.xlsx (ej. ZRP1/ZRP3):
+        # todo sale directo de esta plantilla (defaults_confirmados_extra +
+        # campos_desde_ampliado + obligatorios), evidenciado en un ejemplo de
+        # salida real en vez de en la matriz de confirmación de negocio.
+        bloque = {}
 
     rango_corr_nombre = plantilla.get("rango_correlativo_nombre")
     if not rango_corr_nombre or "PENDIENTE" in rango_corr_nombre:
@@ -210,10 +228,19 @@ def aplicar_plantilla_sap(
 
         numeros_asignados[str(material_idx)] = numero_sap
 
+        canales = plantilla.get("canales_distribucion")
         for _, row in grupo.iterrows():
-            resultado_filas.append(
-                _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes)
-            )
+            if canales:
+                # Ej. Repuestos: cada centro se repite una vez por canal (20 y
+                # 30), evidenciado en docs.../campos_repuestos_zrp{1,3}.xlsx.
+                for canal in canales:
+                    resultado_filas.append(
+                        _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes, canal_forzado=canal)
+                    )
+            else:
+                resultado_filas.append(
+                    _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes)
+                )
 
     df_sap = pd.DataFrame(resultado_filas, columns=header)
 
@@ -224,7 +251,7 @@ def aplicar_plantilla_sap(
         "total_filas": len(df_sap),
         "numeros_asignados": numeros_asignados,
         "campos_pendientes": campos_pendientes,
-        "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, bloque, primeras),
+        "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, plantilla, bloque, primeras),
     }
 
     return df_sap, metadatos
@@ -269,6 +296,7 @@ def _generar_fila_sap(
     primeras: Dict[str, int],
     numero_material: int,
     campos_pendientes: Dict[str, str],
+    canal_forzado: Optional[str] = None,
 ) -> List[str]:
     fila = [""] * len(header)
 
@@ -311,6 +339,8 @@ def _generar_fila_sap(
     set_valor(COL_MATERIAL, numero_material)
     if "FILIAL CODIGO" in row.index:
         set_valor(COL_ORG_VENTAS, row["FILIAL CODIGO"])
+    if canal_forzado is not None:
+        set_valor(COL_CANAL, canal_forzado)
     idx_jerarquia_mara = primeras.get(COL_JERARQUIA_MARA)
     if idx_jerarquia_mara is not None:
         set_valor(COL_JERARQUIA_SD, fila[idx_jerarquia_mara])
@@ -318,10 +348,12 @@ def _generar_fila_sap(
     return fila
 
 
-def _obligatorios_vacios(df: pd.DataFrame, header: List[str], bloque: dict, primeras: Dict[str, int]) -> List[str]:
-    """De la lista de 'obligatorios' del bloque, cuáles quedaron vacíos en TODAS las filas."""
+def _obligatorios_vacios(df: pd.DataFrame, header: List[str], plantilla: dict, bloque: dict, primeras: Dict[str, int]) -> List[str]:
+    """De la lista de 'obligatorios' (de la plantilla, o si no del bloque de
+    confirmación), cuáles quedaron vacíos en TODAS las filas."""
     vacios = []
-    for campo in bloque.get("obligatorios", []):
+    obligatorios = plantilla.get("obligatorios") or bloque.get("obligatorios", [])
+    for campo in obligatorios:
         idx = primeras.get(campo)
         if idx is None:
             continue

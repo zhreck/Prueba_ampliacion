@@ -1,0 +1,72 @@
+{
+  "_descripcion": "Plantilla SAP para tipo ZRP1 (Repuestos NO seriados).",
+  "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp1.xlsx, un ejemplo de salida real de UN repuesto (F0012/HYSTER, VC00-VC07). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
+  "tipo_material": "ZRP1",
+  "rango_correlativo_nombre": "repuestos_material_PENDIENTE",
+  "_rango_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO. Los ejemplos muestran números como 50040000/50013418/50013875, pero eso no confirma un rango — falta que Seba entregue min/max real (igual que se hizo para ZVHE). Mientras 'rango_correlativo_nombre' contenga 'PENDIENTE' y no esté registrado en correlativo.py, salida_sap.aplicar_plantilla_sap() bloquea con error explícito.",
+  "canales_distribucion": [
+    "20",
+    "30"
+  ],
+  "_canales_nota": "Evidenciado en el ejemplo real: cada centro se repite una vez por Canal distribución (20 y 30), a diferencia de Modelos/Maquinaria donde el canal es un valor fijo único.",
+  "campos_desde_ampliado": {
+    "Centro": "CENTRO",
+    "Texto breve material (40)": "TEXTO BREVE",
+    "Grupo de artículos": "GRUPO ARTICULO",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA",
+    "Nº antiguo material": "NPF",
+    "Número de artículo Europeo": "NPF",
+    "Grupo materiales 1": "CODIGO MARCA",
+    "Grupo materiales 2": "CODIGO ORIGINAL_ALTERNATIVO",
+    "Fabricante": "CODIGO FABRICANTE",
+    "Número de Pieza de Fabricante (NPF)": "NPF",
+    "Centro de beneficio": "COD_CEBE"
+  },
+  "_campos_desde_ampliado_nota": "'Nº antiguo material' y 'Número de artículo Europeo' = mismo valor que NPF (evidenciado: en el ejemplo real coinciden exactamente, algo que no pasa en Modelos/Maquinaria donde ambos quedan vacíos). 'Grupo materiales 2' <- CODIGO ORIGINAL_ALTERNATIVO: los códigos 010/020 del input coinciden exactamente con ORIGINAL/ALTERNATIVO en data/reference/Diccionario_marca_jerarquia.xlsx.",
+  "defaults_confirmados_extra": {
+    "Ramo": "T",
+    "Tipo material": "ZRP1",
+    "Almacén": "1000",
+    "Datos Basicos.1": "X",
+    "Datos Basicos.2": "X",
+    "Vista contabilidad": "X",
+    "Vista planif.nec. 1": "X",
+    "Vista Planif-Neces 2": "X",
+    "Vista compras": "X",
+    "Vista tx.ped.comp.": "X",
+    "Vista Datos Gral Centro almacenamiento 1": "X",
+    "Vista Datos Gral Centro almacenamiento 2": "X",
+    "Vista ventas 1": "X",
+    "Vista ventas 2": "X",
+    "Vista texto-ventas": "X",
+    "Vista ventas Centro": "X",
+    "Vista clasificación": "X",
+    "Unidad medida base": "UN",
+    "Sector": "30",
+    "Gr.estadística mat.": "1",
+    "Clasificación Fiscal para el materi": "1",
+    "Grupo tipos posición": "NORM",
+    "Grupo tipos posición gral": "NORM",
+    "Gr.imputación mat.": "54",
+    "Grupo de transporte": "0001",
+    "Grupo de carga": "0001",
+    "verificación de disponibilidad": "02",
+    "Grupo de compras": "Q02",
+    "Perfil Pieza de Fabricante": "ZMP1",
+    "Condición Almacenaje": "RP",
+    "Control de precios": "V",
+    "Tipo de MRP": "ND",
+    "Clasificación Fiscal para el material ZMWS": "0",
+    "Tipo de número del Numero de artículo Europeo": "Z1"
+  },
+  "_defaults_confirmados_extra_nota": "Todos extraídos del único ejemplo real disponible (VC00, fabricante F0012). Sector=30 y Grupo tipos posición=NORM (no VMS0) difieren de Modelos/Maquinaria — Repuestos usa su propio esquema. 'Grupo de compras'='Q02' está evidenciado solo para VC00; podría no generalizar a otras filiales de Repuestos (falta confirmar).",
+  "pendientes_extra": [
+    "Categoría valoración"
+  ],
+  "_pendientes_nota": "Igual que en las otras plantillas: 'falta definir y mapear' (confirmado por Seba). En el ejemplo real aparece un valor (1600) pero es un dato histórico de un material puntual, no una regla general.",
+  "notas_pendientes": [
+    "⚠️ Sin rango de número de material confirmado — bloqueado hasta que Seba lo entregue.",
+    "NRO SERIE (columna de input) no se mapea a ninguna columna SAP: no encontramos un campo de número de serie específico entre las 151 columnas (los números de serie en SAP normalmente se gestionan aparte de la creación del material). Si Seba espera que vaya en algún campo puntual, avisar para agregarlo.",
+    "SERIADO='X' en el input determina que ese material se genera como ZRP3 en vez de ZRP1 (ver app.py, split por fila antes de llamar a esta función) — no es un campo de esta plantilla."
+  ]
+}

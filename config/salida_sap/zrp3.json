@@ -1,0 +1,69 @@
+{
+  "_descripcion": "Plantilla SAP para tipo ZRP3 (Repuestos SERIADOS).",
+  "_nota": "No existe un confirmacionCampos.xlsx para Repuestos (bloque_confirmacion_sap queda sin definir a propósito) — todo lo de acá sale de data/reference/Repuestos/campos_repuestos_zrp3.xlsx, un ejemplo de salida real de DOS repuestos (VA00, fabricantes F0058/F0028). Ver salida_sap.py (docstring) para la regla de 'canales_distribucion'.",
+  "tipo_material": "ZRP3",
+  "rango_correlativo_nombre": "repuestos_material_PENDIENTE",
+  "_rango_nota": "⚠️ RANGO DE MATERIAL NO CONFIRMADO — mismo bloqueo que zrp1.json (comparten rango: es el mismo material Repuestos, solo cambia si es seriado o no). Falta que Seba entregue min/max real.",
+  "canales_distribucion": [
+    "20",
+    "30"
+  ],
+  "campos_desde_ampliado": {
+    "Centro": "CENTRO",
+    "Texto breve material (40)": "TEXTO BREVE",
+    "Grupo de artículos": "GRUPO ARTICULO",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA",
+    "Nº antiguo material": "NPF",
+    "Número de artículo Europeo": "NPF",
+    "Grupo materiales 1": "CODIGO MARCA",
+    "Grupo materiales 2": "CODIGO ORIGINAL_ALTERNATIVO",
+    "Fabricante": "CODIGO FABRICANTE",
+    "Número de Pieza de Fabricante (NPF)": "NPF",
+    "Centro de beneficio": "COD_CEBE"
+  },
+  "defaults_confirmados_extra": {
+    "Ramo": "T",
+    "Tipo material": "ZRP3",
+    "Datos Basicos.1": "X",
+    "Datos Basicos.2": "X",
+    "Vista contabilidad": "X",
+    "Vista planif.nec. 1": "X",
+    "Vista Planif-Neces 2": "X",
+    "Vista compras": "X",
+    "Vista tx.ped.comp.": "X",
+    "Vista Datos Gral Centro almacenamiento 1": "X",
+    "Vista Datos Gral Centro almacenamiento 2": "X",
+    "Vista ventas 1": "X",
+    "Vista ventas 2": "X",
+    "Vista texto-ventas": "X",
+    "Vista ventas Centro": "X",
+    "Vista clasificación": "X",
+    "Unidad medida base": "UN",
+    "Sector": "30",
+    "Gr.estadística mat.": "1",
+    "Clasificación Fiscal para el materi": "1",
+    "Grupo tipos posición": "NORM",
+    "Grupo tipos posición gral": "NORM",
+    "Gr.imputación mat.": "54",
+    "Grupo de transporte": "0001",
+    "Grupo de carga": "0001",
+    "verificación de disponibilidad": "02",
+    "Grupo de compras": "M02",
+    "Perfil Pieza de Fabricante": "ZMP1",
+    "Perfil Número de Serie": "Z001",
+    "Condición Almacenaje": "RP",
+    "Control de precios": "V",
+    "Tipo de MRP": "ND",
+    "Clasificación Fiscal para el material ZMWS": "0",
+    "Tipo de número del Numero de artículo Europeo": "Z1"
+  },
+  "_defaults_confirmados_extra_nota": "Extraídos del único ejemplo real disponible (VA00, 2 materiales). 'Perfil Número de Serie'='Z001' es la diferencia clave con ZRP1 (queda vacío ahí) — es lo que hace que el material sea tratado como seriado en SAP. 'Almacén' queda vacío a propósito (en el ejemplo real de ZRP3 viene vacío, a diferencia de ZRP1 donde es '1000'). 'Grupo de compras'='M02' está evidenciado solo para VA00 — podría no generalizar a otras filiales (falta confirmar); distinto del 'Q02' de ZRP1 porque ese ejemplo era de otra filial (VC00), así que la diferencia podría deberse a la filial y no al tipo de material.",
+  "pendientes_extra": [
+    "Categoría valoración"
+  ],
+  "notas_pendientes": [
+    "⚠️ Sin rango de número de material confirmado — bloqueado hasta que Seba lo entregue.",
+    "NRO SERIE (columna de input) no se mapea a ninguna columna SAP todavía — ver la misma nota en zrp1.json.",
+    "Comparte rango de correlativo con ZRP1 (mismo 'repuestos_material_PENDIENTE') porque es el mismo universo de materiales Repuestos, solo cambia el flag SERIADO — si Seba confirma que necesitan rangos separados, hay que separar este nombre."
+  ]
+}

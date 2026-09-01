@@ -118,10 +118,6 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     df = df.dropna(how="all")
     df.columns = [str(c).strip() for c in df.columns]
 
-    # Filiales en cualquier capitalización (Vc00, vC00, VC00...) se tratan igual.
-    if "FILIAL CODIGO" in df.columns:
-        df["FILIAL CODIGO"] = df["FILIAL CODIGO"].astype(str).str.strip().str.upper()
-
     columnas_esperadas = cfg["input_columns"]
     faltantes = [c for c in columnas_esperadas if c not in df.columns]
     if faltantes:
@@ -132,7 +128,17 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     # Solo nos quedamos con las columnas definidas por la plantilla, en su orden,
     # y descartamos cualquier fila que venga completamente vacía en la key de match.
     df = df[columnas_esperadas].copy()
-    
+
+    # Cada tipo puede llamar distinto a su columna de filial (Modelos: "FILIAL
+    # CODIGO", Repuestos: "FILIAL"...). Hacia adentro del sistema siempre se
+    # trabaja con "FILIAL CODIGO", en mayúsculas (Vc00, vC00, VC00... se tratan
+    # igual), para no tener que enseñarle "FILIAL" a app.py/salida_sap.py.
+    columna_filial = cfg.get("columna_filial", "FILIAL CODIGO")
+    if columna_filial in df.columns:
+        df[columna_filial] = df[columna_filial].astype(str).str.strip().str.upper()
+        if columna_filial != "FILIAL CODIGO":
+            df = df.rename(columns={columna_filial: "FILIAL CODIGO"})
+
     # Convertir columnas especificadas a texto para evitar notación científica y pérdida de ceros
     for col in text_columns:
         if col in df.columns:
