@@ -13,6 +13,7 @@
   </p>
 
   <form action="{{ url_for('procesar') }}" method="post" enctype="multipart/form-data">
+    <div class="field-label">Material a ampliar</div>
     <fieldset>
       {% for tipo in tipos %}
         <label class="tipo-option">

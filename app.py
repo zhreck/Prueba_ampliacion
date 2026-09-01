@@ -65,6 +65,11 @@ def procesar():
     nombre_sheet = "AMPLIADO"
     df_pendientes = None
 
+    cfg_tipo = engine.cargar_config(tipo_id)
+    if generar_sap and not cfg_tipo.get("sap_disponible", True):
+        flash(f"⚠️ {cfg_tipo.get('sap_no_disponible_motivo', 'Formato SAP no disponible para este tipo.')}", "error")
+        return redirect(url_for("index"))
+
     if generar_sap:
         if "FILIAL CODIGO" not in resultado_df.columns:
             flash("⚠️ Columna FILIAL CODIGO no encontrada. No se puede generar SAP.", "warning")

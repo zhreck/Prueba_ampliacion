@@ -1,8 +1,9 @@
-1. Unidad med.salida debe estar vacio
-2. agregar repuestos en tipo de ampliacion 
-3. cambiar el nombre de  tipo de ampliacion a 'Material a ampliar'
+
+1. agregar repuestos en tipo de ampliacion 
+2. cambiar el nombre de  tipo de ampliacion a 'Material a ampliar'
 opciones Modelos, repuestos ZRP1 normalmente (En repuestos tener un flag que diga seriados 
 y dar una advertencia que los materiales que se van a crear son todos seriados ZRP3)
-4. Dar planilla junto diccionario de marcas y jerarquia para mas comodidad al usuario ruta data/reference/diccionario_marca_jerarquia
-5. mejorar diseño con skills claude desing 
+
+
+
 
