@@ -7,6 +7,7 @@
   "rango_correlativo_nombre": "zcam_material",
   "categoria_valoracion": { "grupo": "ZCAM" },
   "grupo_de_compras_dinamico": true,
+  "canales_distribucion": ["20", "30"],
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -20,9 +21,24 @@
     "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
 
-  "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM).",
+  "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM). Sector, Almacén, Perfil Pieza de Fabricante y los flags de 'Vista ...'/'Datos Basicos' salían solo evidenciados para ZMAQ, pero Seba confirmó que aplican igual a las tres plantillas de Modelos.",
   "defaults_confirmados_extra": {
+    "Sector": "10",
     "Sujeto-lote": "X",
+    "Almacén": "2000",
+    "Perfil Pieza de Fabricante": "ZMP1",
+    "Datos Basicos.1": "X ",
+    "Datos Basicos.2": "X ",
+    "Vista contabilidad": "X ",
+    "Vista compras": "X ",
+    "Vista tx.ped.comp.": "X ",
+    "Vista Datos Gral Centro almacenamiento 1": "X ",
+    "Vista Datos Gral Centro almacenamiento 2": "X ",
+    "Vista ventas 1": "X ",
+    "Vista ventas 2": "X ",
+    "Vista texto-ventas": "X ",
+    "Vista ventas Centro": "X ",
+    "Vista clasificación": "X",
     "Clasificación Fiscal para el materi": "1",
     "Gr.imputación mat.": "52",
     "Clasificación Fiscal para el material ZMWS": "0",
@@ -34,7 +50,8 @@
     "Rango de material confirmado: 30000000-39999999.",
     "Grupo de compras: resuelto por filial + marca vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VA00 tiene 3 opciones según marca: M03 Faw, M04 International, M05 Dongfeng. Queda fuera a propósito 'M28 MTT Unds Usadas' (VA00): es para unidades usadas y esta ampliación ya filtra solo 'Vta. Unidades Nuevas' (config/tipos/modelos.json), así que no debería alcanzarse nunca. Una marca de VA00 fuera de esas 3 queda vacía y se reporta en el aviso 'sin grupo de compras'.",
     "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZCAM: International, Faw, Dongfeng y el comodín 'Otras Marcas', aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de camión (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía.",
-    "Sector y los flags de 'Vista ...' (Datos Basicos, Vista contabilidad, Vista compras, etc.) NO están confirmados para ZCAM (a diferencia de ZMAQ, que tiene un ejemplo real). Quedan en blanco hasta tener un ejemplo de salida real de ZCAM o confirmación explícita de negocio.",
+    "Sector='10', Almacén='2000', Perfil Pieza de Fabricante='ZMP1' y los flags de 'Vista ...'/'Datos Basicos' confirmados por Seba para las tres plantillas de Modelos (arreglos_notas.txt) — antes solo estaban evidenciados para ZMAQ.",
+    "Canal distribución=20/30 (canales_distribucion, cada Centro se repite una vez por canal) confirmado por Seba para Modelos, igual que en Repuestos.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ)."
   ]
 }

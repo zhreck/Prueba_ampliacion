@@ -193,6 +193,25 @@ def _valor_texto(v) -> str:
     return str(v)
 
 
+def _normalizar_codigo_marca(valor) -> str:
+    """
+    Normaliza un código de marca a 3 dígitos con cero a la izquierda (ej. "80"
+    o "80.0" -> "080"), que es el formato real que trae
+    data/reference/Diccionario_marca_jerarquia.xlsx (columna CODIGO, celda de
+    texto tipo '080') y con el que están armados config/marcas.json,
+    categoria_valoracion.json y grupo_compras.json. Si el valor no es
+    numérico se devuelve tal cual (no debería pasar con un código de marca
+    real, pero evita reventar si llega algo raro).
+    """
+    texto = str(valor).strip()
+    if not texto:
+        return ""
+    try:
+        return f"{int(float(texto)):03d}"
+    except ValueError:
+        return texto
+
+
 def aplicar_plantilla_sap(
     df_ampliado: pd.DataFrame,
     tipo_material: str,
@@ -325,7 +344,7 @@ def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primer
 
     sin_categoria = set()
     for i in range(len(df_sap)):
-        marca = str(df_sap.iat[i, idx_marca]).strip()
+        marca = _normalizar_codigo_marca(df_sap.iat[i, idx_marca])
         if not marca:
             continue
 
@@ -383,7 +402,7 @@ def _resolver_grupo_compras(df_sap: pd.DataFrame, plantilla: dict, primeras: Dic
             df_sap.iat[i, idx_grupo] = opciones["_default"]
             continue
 
-        marca = str(df_sap.iat[i, idx_marca]).strip()
+        marca = _normalizar_codigo_marca(df_sap.iat[i, idx_marca])
         valor = opciones.get(marca)
         if valor:
             df_sap.iat[i, idx_grupo] = valor

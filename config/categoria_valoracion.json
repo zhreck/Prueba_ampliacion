@@ -2,7 +2,6 @@
   "_fuente": "data/reference/calVal.xlsx (cod_carVal / referencia_catVal / Descripcion, subido por Seba) cruzado con data/reference/Diccionario_marca_jerarquia.xlsx (marca/código) — Seba confirmó que Categoría valoración corresponde a la MARCA del vehículo/máquina (lo que en la salida SAP ya se cargaba como 'Grupo materiales 1' vía MARCA CODIGO/CODIGO MARCA), no al Fabricante (el proveedor/fabricante de la pieza, que en Repuestos puede ser un tercero genérico sin relación con la marca del vehículo — evidenciado en data/reference/Repuestos/campos_repuestos_zrp3.xlsx: Fabricante=F0058/NACIONAL pero Grupo materiales 1=110/INTERNATIONAL).",
   "_nota": "Mapea (grupo de categoría, código de marca) -> código de Categoría valoración. 'ZVEH' es el grupo que calVal.xlsx usa para Automotriz (filial VF00/tipo material ZVHE). Repuestos (ZRP1/ZRP3) no usa un único grupo 'ZREP' plano: la categoría depende del NEGOCIO de la filial de esa fila (confirmado por Seba) — Camiones si es VA00, Maquinarias si es VC00/VD00/VE00, Vehículos/Motos si es VF00 — por eso 'ZREP' está partido en 3 sub-grupos, elegidos en salida_sap.py según 'Org. Ventas'. Solo se cargan acá las combinaciones SIN ambigüedad — ver docs/categoria_valoracion_pendientes.md para lo que quedó afuera y por qué.",
   "_lifan_nota": "LIFAN (código de marca 140) y LIFAN AUTO (código 290) son DOS marcas distintas en el diccionario — Seba confirmó que el input real de Repuestos las distingue (140 para motos, 290 para autos), así que ya no hace falta una regla especial: cada código de marca resuelve solo a su categoría correspondiente.",
-
   "grupos": {
     "ZVEH": {
       "170": "1100",
@@ -10,20 +9,20 @@
       "220": "1120",
       "160": "1130",
       "130": "1140",
-      "60": "1155",
+      "060": "1155",
       "140": "1170",
       "270": "1180",
-      "80": "1150",
+      "080": "1150",
       "120": "1150"
     },
     "ZCAM": {
       "110": "1000",
-      "80": "1010",
-      "60": "1020",
+      "080": "1010",
+      "060": "1020",
       "280": "1030"
     },
     "ZMAQ": {
-      "90": "1400",
+      "090": "1400",
       "100": "1410",
       "150": "1420",
       "180": "1440",
@@ -33,12 +32,12 @@
     },
     "ZREP_CAMIONES": {
       "110": "1500",
-      "80": "1510",
-      "60": "1520",
+      "080": "1510",
+      "060": "1520",
       "280": "1530"
     },
     "ZREP_MAQUINARIAS": {
-      "90": "1590",
+      "090": "1590",
       "100": "1600",
       "150": "1610",
       "180": "1630",
@@ -53,11 +52,11 @@
       "160": "1570",
       "290": "1575",
       "130": "1580",
-      "80": "1670",
+      "080": "1670",
       "270": "1680",
       "140": "1700",
       "120": "1710",
-      "60": "1720"
+      "060": "1720"
     }
   }
 }
