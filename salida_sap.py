@@ -26,7 +26,7 @@ Reglas universales (no dependen de la plantilla, aplican siempre):
   etiqueta interna de cada bloque/sub-tipo dentro de confirmacionCampos.xlsx. Esto se
   confirma con el propio Excel (fila de ZCAM dice literalmente
   'Obligatorio\\nValor por defecto "MM01"'), con la vista SQL histórica
-  (docs/material_formato_sap_ttm.sql, 'MM01' AS TRANSACCION) y con el ejemplo real
+  (docs/vista_sql_formato_sap.sql, 'MM01' AS TRANSACCION) y con el ejemplo real
   de ZMAQ/VC00 (columna Transaccion = 'MM01' en las 70 filas).
 - "Material" = número asignado por correlativo.siguiente_numero() del rango de la
   filial/tipo de material.
@@ -68,9 +68,12 @@ CONFIG_DIR = BASE_DIR / "config" / "salida_sap"
 HEADER_PATH = BASE_DIR / "docs" / "header_151_columnas.json"
 CONFIRMACION_PATH = BASE_DIR / "docs" / "confirmacion_campos_parsed.json"
 CATEGORIA_VALORACION_PATH = BASE_DIR / "config" / "categoria_valoracion.json"
+MARCAS_PATH = BASE_DIR / "config" / "marcas.json"
+GRUPO_COMPRAS_PATH = BASE_DIR / "config" / "grupo_compras.json"
 
 COL_CATEGORIA_VALORACION = "Categoría valoración"
-COL_FABRICANTE = "Fabricante"
+COL_MARCA = "Grupo materiales 1"
+COL_GRUPO_COMPRAS = "Grupo de compras"
 
 COL_TRANSACCION = "Transaccion"
 COL_MATERIAL = "Material"
@@ -115,9 +118,21 @@ def cargar_header_151() -> List[str]:
 
 
 def cargar_categoria_valoracion() -> dict:
-    """Carga config/categoria_valoracion.json: {grupo: {cod_fabricante: cod_carVal}}."""
+    """Carga config/categoria_valoracion.json: {grupo: {cod_marca: cod_carVal}}."""
     with open(CATEGORIA_VALORACION_PATH, encoding="utf-8") as fh:
         return json.load(fh).get("grupos", {})
+
+
+def cargar_marcas() -> dict:
+    """Carga config/marcas.json: {cod_marca: nombre_marca} (solo para avisos legibles)."""
+    with open(MARCAS_PATH, encoding="utf-8") as fh:
+        return json.load(fh).get("marcas", {})
+
+
+def cargar_grupo_compras() -> dict:
+    """Carga config/grupo_compras.json: {filial: {cod_marca: grupo} | {'_default': grupo}}."""
+    with open(GRUPO_COMPRAS_PATH, encoding="utf-8") as fh:
+        return json.load(fh).get("filiales", {})
 
 
 def cargar_confirmacion_sap() -> dict:
@@ -254,7 +269,8 @@ def aplicar_plantilla_sap(
 
     df_sap = pd.DataFrame(resultado_filas, columns=header)
 
-    fabricantes_sin_categoria = _resolver_categoria_valoracion(df_sap, plantilla, primeras)
+    marcas_sin_categoria = _resolver_categoria_valoracion(df_sap, plantilla, primeras)
+    marcas_sin_grupo_compras = _resolver_grupo_compras(df_sap, plantilla, primeras)
 
     metadatos = {
         "tipo_material": tipo_material,
@@ -264,7 +280,8 @@ def aplicar_plantilla_sap(
         "numeros_asignados": numeros_asignados,
         "campos_pendientes": campos_pendientes,
         "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, plantilla, bloque, primeras),
-        "fabricantes_sin_categoria_valoracion": fabricantes_sin_categoria,
+        "marcas_sin_categoria_valoracion": marcas_sin_categoria,
+        "marcas_sin_grupo_compras": marcas_sin_grupo_compras,
     }
 
     return df_sap, metadatos
@@ -272,11 +289,18 @@ def aplicar_plantilla_sap(
 
 def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:
     """
-    Llena "Categoría valoración" según el fabricante de cada fila, usando
-    config/categoria_valoracion.json. Solo pone valores confirmados sin
-    ambigüedad — un fabricante sin entrada en el grupo que corresponda queda
-    con el campo vacío y se reporta en la lista que devuelve esta función
-    (ver docs/categoria_valoracion_pendientes.md).
+    Llena "Categoría valoración" según la MARCA de cada fila (columna "Grupo
+    materiales 1", ya cargada por campos_desde_ampliado con MARCA CODIGO /
+    CODIGO MARCA), usando config/categoria_valoracion.json. Se usa la marca y
+    no el Fabricante porque calVal.xlsx describe categorías por marca de
+    vehículo/máquina (ej. "MAQ. HYSTER", "Camiones Faw"), y en Repuestos el
+    Fabricante es quien fabrica/provee la pieza — puede ser un tercero sin
+    relación con la marca (evidenciado en campos_repuestos_zrp3.xlsx:
+    Fabricante=F0058/NACIONAL pero marca=110/INTERNATIONAL).
+
+    Solo pone valores confirmados sin ambigüedad — una marca sin entrada en
+    el grupo que corresponda queda con el campo vacío y se reporta en la
+    lista que devuelve esta función (ver docs/categoria_valoracion_pendientes.md).
 
     Dos formas de configurar "categoria_valoracion" en la plantilla:
     - {"grupo": "ZMAQ"}: un solo grupo fijo (Modelos — cada plantilla ya es
@@ -291,17 +315,18 @@ def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primer
         return []
 
     todos_los_grupos = cargar_categoria_valoracion()
+    marcas = cargar_marcas()
     grupo_fijo = cfg.get("grupo")
     grupos_por_filial = cfg.get("grupos_por_filial")
 
     idx_categoria = primeras[COL_CATEGORIA_VALORACION]
-    idx_fabricante = primeras[COL_FABRICANTE]
+    idx_marca = primeras[COL_MARCA]
     idx_filial = primeras.get(COL_ORG_VENTAS) if grupos_por_filial else None
 
     sin_categoria = set()
     for i in range(len(df_sap)):
-        fabricante = str(df_sap.iat[i, idx_fabricante]).strip()
-        if not fabricante:
+        marca = str(df_sap.iat[i, idx_marca]).strip()
+        if not marca:
             continue
 
         if grupo_fijo:
@@ -310,16 +335,62 @@ def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primer
             filial = str(df_sap.iat[i, idx_filial]).strip()
             nombre_grupo = grupos_por_filial.get(filial)
             if not nombre_grupo:
-                sin_categoria.add(fabricante)
+                sin_categoria.add(marcas.get(marca, marca))
                 continue
 
-        valor = todos_los_grupos.get(nombre_grupo, {}).get(fabricante)
+        valor = todos_los_grupos.get(nombre_grupo, {}).get(marca)
         if valor:
             df_sap.iat[i, idx_categoria] = valor
         else:
-            sin_categoria.add(fabricante)
+            sin_categoria.add(marcas.get(marca, marca))
 
     return sorted(sin_categoria)
+
+
+def _resolver_grupo_compras(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:
+    """
+    Llena "Grupo de compras" según filial ('Org. Ventas') + marca ('Grupo
+    materiales 1'), usando config/grupo_compras.json — tabla que Seba pasó en
+    arreglos_notas.txt (grupo de compras de Unidades, no de Repuestos: no se
+    usa para ZRP1/ZRP3, que ya tienen su propio valor confirmado por ejemplo
+    real). Solo aplica si la plantilla tiene "grupo_de_compras_dinamico": true.
+
+    Si la filial no está en la tabla, no se toca el campo (sigue el
+    comportamiento anterior: vacío/pendiente). Si la filial tiene una sola
+    opción fija (clave "_default", ej. VF00) se usa esa sin mirar la marca.
+    Si la filial tiene varias opciones por marca (ej. VA00/VC00) y la marca de
+    la fila no está en la tabla, el campo queda vacío y se reporta en la
+    lista que devuelve esta función.
+    """
+    if not plantilla.get("grupo_de_compras_dinamico") or df_sap.empty:
+        return []
+
+    tabla = cargar_grupo_compras()
+    marcas = cargar_marcas()
+
+    idx_grupo = primeras[COL_GRUPO_COMPRAS]
+    idx_marca = primeras[COL_MARCA]
+    idx_filial = primeras[COL_ORG_VENTAS]
+
+    sin_grupo = set()
+    for i in range(len(df_sap)):
+        filial = str(df_sap.iat[i, idx_filial]).strip()
+        opciones = tabla.get(filial)
+        if not opciones:
+            continue
+
+        if "_default" in opciones:
+            df_sap.iat[i, idx_grupo] = opciones["_default"]
+            continue
+
+        marca = str(df_sap.iat[i, idx_marca]).strip()
+        valor = opciones.get(marca)
+        if valor:
+            df_sap.iat[i, idx_grupo] = valor
+        else:
+            sin_grupo.add(marcas.get(marca, marca))
+
+    return sorted(sin_grupo)
 
 
 def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]:
@@ -336,10 +407,16 @@ def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]
     resueltos_aparte = {COL_TRANSACCION, COL_MATERIAL, COL_JERARQUIA_SD} | CAMPOS_FORZAR_VACIO
     if plantilla.get("categoria_valoracion"):
         # No es un "pendiente" de plantilla completa: se resuelve fila por fila
-        # según el fabricante (ver _resolver_categoria_valoracion). Los
-        # fabricantes que no tengan categoría confirmada se reportan aparte,
-        # en metadatos["fabricantes_sin_categoria_valoracion"].
+        # según la marca (ver _resolver_categoria_valoracion). Las marcas que
+        # no tengan categoría confirmada se reportan aparte, en
+        # metadatos["marcas_sin_categoria_valoracion"].
         resueltos_aparte = resueltos_aparte | {COL_CATEGORIA_VALORACION}
+    if plantilla.get("grupo_de_compras_dinamico"):
+        # Mismo patrón que categoria_valoracion: se resuelve fila por fila
+        # según filial + marca (ver _resolver_grupo_compras), no es un
+        # "pendiente" de plantilla completa. Lo que no matchee se reporta en
+        # metadatos["marcas_sin_grupo_compras"].
+        resueltos_aparte = resueltos_aparte | {COL_GRUPO_COMPRAS}
     resueltos_por_plantilla = (
         set(plantilla.get("defaults_confirmados_extra", {}).keys())
         | set(plantilla.get("campos_desde_ampliado", {}).keys())

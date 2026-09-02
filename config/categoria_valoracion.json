@@ -1,58 +1,63 @@
 {
-  "_fuente": "data/reference/calVal.xlsx — tabla cod_carVal / referencia_catVal / Descripcion que subió Seba.",
-  "_nota": "Mapea (grupo de categoría, código de fabricante) -> código de Categoría valoración. 'ZVEH' es el grupo que calVal.xlsx usa para Automotriz (equivalente a la filial VF00/tipo material ZVHE del resto del sistema — probablemente el mismo nombre con las letras traspuestas en el archivo original, no dos cosas distintas). Repuestos (ZRP1/ZRP3) no usa un único grupo 'ZREP' plano: la categoría depende del NEGOCIO de la filial de esa fila (confirmado por Seba en arreglos_notas.txt) — Camiones si es VA00, Maquinarias si es VC00/VD00/VE00, Vehículos/Motos si es VF00 — por eso 'ZREP' está partido en 3 sub-grupos, elegidos en salida_sap.py según 'Org. Ventas' (que ya es el código de filial de la fila). Solo se cargan acá las combinaciones SIN ambigüedad — ver docs/categoria_valoracion_pendientes.md para lo que quedó afuera y por qué.",
+  "_fuente": "data/reference/calVal.xlsx (cod_carVal / referencia_catVal / Descripcion, subido por Seba) cruzado con data/reference/Diccionario_marca_jerarquia.xlsx (marca/código) — Seba confirmó que Categoría valoración corresponde a la MARCA del vehículo/máquina (lo que en la salida SAP ya se cargaba como 'Grupo materiales 1' vía MARCA CODIGO/CODIGO MARCA), no al Fabricante (el proveedor/fabricante de la pieza, que en Repuestos puede ser un tercero genérico sin relación con la marca del vehículo — evidenciado en data/reference/Repuestos/campos_repuestos_zrp3.xlsx: Fabricante=F0058/NACIONAL pero Grupo materiales 1=110/INTERNATIONAL).",
+  "_nota": "Mapea (grupo de categoría, código de marca) -> código de Categoría valoración. 'ZVEH' es el grupo que calVal.xlsx usa para Automotriz (filial VF00/tipo material ZVHE). Repuestos (ZRP1/ZRP3) no usa un único grupo 'ZREP' plano: la categoría depende del NEGOCIO de la filial de esa fila (confirmado por Seba) — Camiones si es VA00, Maquinarias si es VC00/VD00/VE00, Vehículos/Motos si es VF00 — por eso 'ZREP' está partido en 3 sub-grupos, elegidos en salida_sap.py según 'Org. Ventas'. Solo se cargan acá las combinaciones SIN ambigüedad — ver docs/categoria_valoracion_pendientes.md para lo que quedó afuera y por qué.",
+  "_lifan_nota": "LIFAN (código de marca 140) y LIFAN AUTO (código 290) son DOS marcas distintas en el diccionario — Seba confirmó que el input real de Repuestos las distingue (140 para motos, 290 para autos), así que ya no hace falta una regla especial: cada código de marca resuelve solo a su categoría correspondiente.",
 
   "grupos": {
     "ZVEH": {
-      "F0019": "1140",
-      "F0020": "1110",
-      "F0021": "1170",
-      "F0022": "1155",
-      "F0023": "1130",
-      "F0027": "1100",
-      "F0028": "1150",
-      "F0029": "1150"
+      "170": "1100",
+      "260": "1110",
+      "220": "1120",
+      "160": "1130",
+      "130": "1140",
+      "60": "1155",
+      "140": "1170",
+      "270": "1180",
+      "80": "1150",
+      "120": "1150"
     },
     "ZCAM": {
-      "F0001": "1020",
-      "F0006": "1000",
-      "F0022": "1020",
-      "F0028": "1010",
-      "F9999": "1030"
+      "110": "1000",
+      "80": "1010",
+      "60": "1020",
+      "280": "1030"
     },
     "ZMAQ": {
-      "F0010": "1440",
-      "F0012": "1410",
-      "F0014": "1400",
-      "F0015": "1450",
-      "F0016": "1420",
-      "F9999": "1470"
+      "90": "1400",
+      "100": "1410",
+      "150": "1420",
+      "180": "1440",
+      "230": "1450",
+      "240": "1460",
+      "280": "1470"
     },
     "ZREP_CAMIONES": {
-      "F0001": "1520",
-      "F0006": "1500",
-      "F0022": "1520",
-      "F0028": "1510",
-      "F9999": "1530"
+      "110": "1500",
+      "80": "1510",
+      "60": "1520",
+      "280": "1530"
     },
     "ZREP_MAQUINARIAS": {
-      "F0010": "1630",
-      "F0012": "1600",
-      "F0014": "1590",
-      "F0015": "1640",
-      "F0016": "1610",
-      "F9999": "1660"
+      "90": "1590",
+      "100": "1600",
+      "150": "1610",
+      "180": "1630",
+      "230": "1640",
+      "240": "1650",
+      "280": "1660"
     },
     "ZREP_VEHICULOS": {
-      "F0019": "1580",
-      "F0020": "1550",
-      "F0021": "1700",
-      "F0022": "1720",
-      "F0023": "1570",
-      "F0025": "1560",
-      "F0027": "1540",
-      "F0028": "1670",
-      "F0029": "1710"
+      "170": "1540",
+      "260": "1550",
+      "220": "1560",
+      "160": "1570",
+      "290": "1575",
+      "130": "1580",
+      "80": "1670",
+      "270": "1680",
+      "140": "1700",
+      "120": "1710",
+      "60": "1720"
     }
   }
 }

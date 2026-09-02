@@ -80,26 +80,7 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
     for col_idx, nombre_col in enumerate(columnas, start=1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(14, len(nombre_col) + 2)
 
-    diccionario_cfg = cfg.get("diccionario_referencia")
-    if diccionario_cfg:
-        _agregar_hoja_diccionario(wb, diccionario_cfg)
-
     return wb
-
-
-def _agregar_hoja_diccionario(wb: "openpyxl.Workbook", diccionario_cfg: dict) -> None:
-    """Copia tal cual una hoja de referencia (ej. marcas/jerarquía) como hoja
-    extra de la plantilla descargable, para que el usuario tenga a mano los
-    códigos válidos sin tener que abrir otro Excel aparte."""
-    origen_path = BASE_DIR / diccionario_cfg["reference_file"]
-    if not origen_path.exists():
-        return
-    wb_origen = openpyxl.load_workbook(origen_path, data_only=True)
-    ws_origen = wb_origen[diccionario_cfg["sheet"]]
-
-    ws_destino = wb.create_sheet(title=diccionario_cfg.get("titulo_hoja", "DICCIONARIO"))
-    for fila in ws_origen.iter_rows(values_only=True):
-        ws_destino.append(fila)
 
 
 def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:

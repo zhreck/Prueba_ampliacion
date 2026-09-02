@@ -6,6 +6,7 @@
   "bloque_confirmacion_sap": "ZCAM",
   "rango_correlativo_nombre": "zcam_material",
   "categoria_valoracion": { "grupo": "ZCAM" },
+  "grupo_de_compras_dinamico": true,
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -31,8 +32,8 @@
   "notas_pendientes": [
     "Centro->Cebe: ya existe en data/reference/centros_ampliacion.xlsx (32 filas para COD_SOCIEDAD==VA00, 4 fabricantes: DONG FENG DFCV/F0001, FAW/F0028, INTERNATIONAL/F0006, DONG FENG DFAC/F0022, cubriendo VA00..VA07). OJO: no hay fila F9999 (comodín 'TODAS/OTRAS MARCAS') para VA00 en la tabla — un fabricante de camión que no sea uno de esos 4 se omite con aviso, no cae a ningún comodín.",
     "Rango de material confirmado: 30000000-39999999.",
-    "Grupo de compras: 'Q03' solo se confirmó para ZMAQ/TTM (arreglos_notas.txt), no para ZCAM -> sigue en blanco y se lista en la hoja PENDIENTES hasta que Seba confirme el valor para camiones.",
-    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZCAM: DFCV, INTERNATIONAL, DFAC, FAW y el comodín F9999, aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Un fabricante fuera de esa lista queda vacío.",
+    "Grupo de compras: resuelto por filial + marca vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VA00 tiene 3 opciones según marca: M03 Faw, M04 International, M05 Dongfeng. Queda fuera a propósito 'M28 MTT Unds Usadas' (VA00): es para unidades usadas y esta ampliación ya filtra solo 'Vta. Unidades Nuevas' (config/tipos/modelos.json), así que no debería alcanzarse nunca. Una marca de VA00 fuera de esas 3 queda vacía y se reporta en el aviso 'sin grupo de compras'.",
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZCAM: International, Faw, Dongfeng y el comodín 'Otras Marcas', aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de camión (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía.",
     "Sector y los flags de 'Vista ...' (Datos Basicos, Vista contabilidad, Vista compras, etc.) NO están confirmados para ZCAM (a diferencia de ZMAQ, que tiene un ejemplo real). Quedan en blanco hasta tener un ejemplo de salida real de ZCAM o confirmación explícita de negocio.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ)."
   ]

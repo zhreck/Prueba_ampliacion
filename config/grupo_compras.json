@@ -1,0 +1,25 @@
+{
+  "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la tabla de Grupo de compras de UNIDADES (Modelos: ZVHE/ZCAM/ZMAQ). No aplica a Repuestos (ZRP1/ZRP3), que ya tienen su propio 'Grupo de compras' confirmado por ejemplo real (Q02/M02) y no usan esta tabla.",
+  "_nota": "Por filial: o una sola opción fija ('_default', ej. VF00, donde 'TAU Unds' no distingue marca) o varias opciones según la MARCA de la fila (columna 'Grupo materiales 1'). 'MTT Unds Usadas' (M28, VA00) quedó fuera: es para unidades USADAS y esta ampliación ya filtra a 'Vta. Unidades Nuevas' (ver reference_filter en config/tipos/modelos.json), así que ese grupo no debería ser alcanzable acá.",
+  "filiales": {
+    "VA00": {
+      "80": "M03",
+      "110": "M04",
+      "60": "M05"
+    },
+    "VC00": {
+      "100": "Q03",
+      "90": "Q04",
+      "230": "Q05"
+    },
+    "VD00": {
+      "150": "Q08"
+    },
+    "VE00": {
+      "180": "Q06"
+    },
+    "VF00": {
+      "_default": "T03"
+    }
+  }
+}

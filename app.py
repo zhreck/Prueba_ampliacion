@@ -128,7 +128,8 @@ def procesar():
                     partes_sap = []
                     pendientes = {}
                     obligatorios_vacios = []
-                    fabricantes_sin_categoria = set()
+                    marcas_sin_categoria = set()
+                    marcas_sin_grupo_compras = set()
                     tipos_material_usados = []
                     for tipo_material_sap, mask in [("ZRP3", es_seriado), ("ZRP1", ~es_seriado)]:
                         subset = resultado_df[mask]
@@ -138,7 +139,8 @@ def procesar():
                         partes_sap.append(df_parte)
                         pendientes.update(meta_parte.get("campos_pendientes", {}))
                         obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
-                        fabricantes_sin_categoria.update(meta_parte.get("fabricantes_sin_categoria_valoracion", []))
+                        marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
+                        marcas_sin_grupo_compras.update(meta_parte.get("marcas_sin_grupo_compras", []))
                         tipos_material_usados.append(tipo_material_sap)
                     df_salida = pd.concat(partes_sap, ignore_index=True)
                     nombre_sheet = "SAP_" + "_".join(tipos_material_usados)
@@ -151,12 +153,19 @@ def procesar():
                     nombre_sheet = f"SAP_{tipo_material_sap}"
                     pendientes = metadatos_sap.get("campos_pendientes", {})
                     obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
-                    fabricantes_sin_categoria = set(metadatos_sap.get("fabricantes_sin_categoria_valoracion", []))
+                    marcas_sin_categoria = set(metadatos_sap.get("marcas_sin_categoria_valoracion", []))
+                    marcas_sin_grupo_compras = set(metadatos_sap.get("marcas_sin_grupo_compras", []))
 
-                if fabricantes_sin_categoria:
+                if marcas_sin_categoria:
                     avisos.append(
-                        f"⚠️ Sin Categoría valoración confirmada para fabricante(s): "
-                        f"{', '.join(sorted(fabricantes_sin_categoria))} (ver docs/categoria_valoracion_pendientes.md)."
+                        f"⚠️ Sin Categoría valoración confirmada para marca(s): "
+                        f"{', '.join(sorted(marcas_sin_categoria))} (ver docs/categoria_valoracion_pendientes.md)."
+                    )
+
+                if marcas_sin_grupo_compras:
+                    avisos.append(
+                        f"⚠️ Sin Grupo de compras confirmado para marca(s): "
+                        f"{', '.join(sorted(marcas_sin_grupo_compras))} (ver config/grupo_compras.json)."
                     )
 
                 if pendientes:

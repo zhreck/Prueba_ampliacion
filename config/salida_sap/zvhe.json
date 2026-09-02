@@ -6,6 +6,7 @@
   "bloque_confirmacion_sap": "ZVHE",
   "rango_correlativo_nombre": "zvhe_material",
   "categoria_valoracion": { "grupo": "ZVEH" },
+  "grupo_de_compras_dinamico": true,
 
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
@@ -30,8 +31,8 @@
   "notas_pendientes": [
     "Rango de material: resuelto (40000000-49999999, confirmado por Seba).",
     "Centro->Cebe: resuelto. Seba subió la tabla real (data/reference/centros_ampliacion.xlsx), que reemplaza al symlink roto que traía el repo. Para VF00 trae 42 filas / varios fabricantes, incl. comodín F9999.",
-    "Grupo de compras: 'Q03' solo se confirmó para ZMAQ/TTM (arreglos_notas.txt), no para ZVHE -> sigue en blanco y se lista en la hoja PENDIENTES hasta que Seba confirme el valor para automotriz.",
-    "Categoría valoración: resuelta por fabricante vía config/categoria_valoracion.json (grupo ZVEH: KYC, ZXAuto, Lifan, Dongfeng(DFAC), Livan, Lynk&Co, y FAW/Jetour usando 1150 'VEH. Otras Marcas' — confirmado por Seba, aunque calVal.xlsx no tenga una fila propia para esas dos marcas). Solo el comodín F9999 queda sin resolver a propósito — ver docs/categoria_valoracion_pendientes.md (podría ser auto o moto según el material real, no se puede saber solo con el fabricante comodín).",
+    "Grupo de compras: resuelto vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VF00 tiene una sola opción fija ('T03 TAU Unds'), no depende de la marca a diferencia de VA00/VC00.",
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZVEH: Lynk&Co, ZX/ZXAuto, Riddara, Livan, KYC, Dongfeng, Lifan, Linhai, y FAW/Jetour usando 1150 'VEH. Otras Marcas' — confirmado por Seba, aunque calVal.xlsx no tenga una fila propia para esas dos marcas). Se usa la marca del vehículo y no el Fabricante porque calVal.xlsx clasifica por marca, no por quién fabricó la pieza (ver la nota en config/categoria_valoracion.json). Solo la marca comodín 'OTRAS MARCAS' (código 280) queda sin resolver a propósito — ver docs/categoria_valoracion_pendientes.md (podría ser auto o moto según el material real, no se puede saber solo con la marca comodín).",
     "Sector y los flags de 'Vista ...' no están confirmados para ZVHE (solo hay evidencia real para ZMAQ). Quedan en blanco.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE.",
     "Categoría Clase y Clase quedan siempre vacíos (confirmado por Seba en arreglos_notas.txt) — esto además resuelve la duda anterior sobre \"Clase\": \"ZMAQUINAS\" en confirmacion_campos_parsed.json para el bloque ZVHE: como el campo se fuerza vacío, ese valor ya no se usa."
