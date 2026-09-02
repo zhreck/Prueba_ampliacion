@@ -21,18 +21,13 @@ información que Seba dio después:
   LIFAN" y "1700 Repuestos Motos Lifan". Seba confirmó usar **1700**, por
   la misma clasificación ya confirmada en ZVEH (LIFAN = moto, "1170 Motos
   Lifan").
+- **ZVEH (Modelos, Automotriz) / F0028 (FAW) y F0029 (JETOUR)**: calVal.xlsx
+  no tiene fila `ZVEH` propia para ninguna de las dos marcas. Seba confirmó
+  que van con **1150 "VEH. Otras Marcas"** (la misma categoría que el
+  comodín de autos), no con la de Camiones ni con una fila nueva.
 
 ## Siguen pendientes
 
-- **ZVEH (Modelos, Automotriz) / F0028 (FAW)**: no hay ninguna fila `ZVEH`
-  para FAW en calVal.xlsx (solo existe `1010 ZCAM Camiones Faw`, del lado
-  Camiones). Es un caso distinto al de Repuestos: para Repuestos SÍ existe
-  `1670 ZREP Repuestos Vehículos FAW`, pero para Modelos/ZVEH no hay
-  equivalente. ¿Falta cargar esa fila en calVal.xlsx, o un vehículo FAW
-  ampliado por VF00 debería usar la categoría de Camiones (1010) igual que
-  Repuestos usa la de Camiones para VA00?
-- **ZVEH / F0029 (JETOUR)**: mismo caso — no hay fila `ZVEH` para Jetour
-  (solo `1710 ZREP Repuestos Vehíc. Jetour`, que es de Repuestos).
 - **ZVEH / F9999 (comodín)** y **ZREP_VEHICULOS / F9999 (comodín)**: en
   ambos casos hay DOS filas candidatas — auto vs moto (`1150`/`1190` en
   ZVEH, `1585`/`1690` en Repuestos). La filial (VF00) no alcanza para

@@ -1,4 +1,0 @@
-
-1. dependiendo de la filial la catval cambia en repuestos, si es de la filial VA00 estamos hablando de camiones,
-si es de la filial VF00, y si es de las filiales VC00, VD00, VE00 estamos hablando de maquinarias,
-para que lo tengas en cuenta cuando el usuario de el input 
