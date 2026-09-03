@@ -137,11 +137,12 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     return df
 
 
-def _cargar_referencia(ref_file: str, ref_sheet) -> pd.DataFrame:
+def _cargar_referencia(ref_file: str, ref_sheet, text_columns: list[str] | None = None) -> pd.DataFrame:
     ref_path = BASE_DIR / ref_file
     if not ref_path.exists():
         raise InputInvalidoError(f"Falta el archivo de referencia: {ref_path}")
-    return pd.read_excel(ref_path, sheet_name=ref_sheet or 0)
+    dtype = {col: str for col in text_columns} if text_columns else None
+    return pd.read_excel(ref_path, sheet_name=ref_sheet or 0, dtype=dtype)
 
 
 def _cargar_disponibilidad(cfg: dict) -> dict[tuple[str, str], float] | None:
@@ -192,7 +193,9 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     cfg = cargar_config(tipo_id)
     input_df = _leer_input(file_storage, cfg)
-    ref_df_completa = _cargar_referencia(cfg["reference_file"], cfg.get("reference_sheet"))
+    ref_df_completa = _cargar_referencia(
+        cfg["reference_file"], cfg.get("reference_sheet"), cfg.get("reference_text_columns")
+    )
 
     key_input = cfg["key_input"]
     key_ref = cfg["key_reference"]

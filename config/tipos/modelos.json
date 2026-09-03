@@ -19,10 +19,11 @@
     "NPF:Fabricante"
   ],
   
-  "text_columns": ["JERARQUIA", "MARCA CODIGO", "NPF:Fabricante"],
+  "text_columns": ["JERARQUIA", "MARCA CODIGO", "NPF:Fabricante", "COD_MARCA"],
 
   "reference_file": "data/reference/Unidades/centros_ampliacion.xlsx",
   "reference_sheet": null,
+  "reference_text_columns": ["COD_MARCA"],
   "_reference_nota": "Tabla única confirmada por negocio, cubre VF00/VC00/VD00/VE00/VA00 (columna COD_SOCIEDAD). Reemplaza al symlink roto modelos_centros_ampliacion.xlsx que traía el repo. AREA_LINEA_NEGOCIO se filtra a 'Vta. Unidades Nuevas' por si en el futuro se agregan otras líneas de negocio a la misma tabla.",
   "reference_filter": {
     "column": "AREA_LINEA_NEGOCIO",
@@ -38,8 +39,10 @@
   "output_columns_from_reference": [
     "CENTRO",
     "COD_CEBE",
-    "NOM_CODIGO_CEBE"
+    "NOM_CODIGO_CEBE",
+    "COD_MARCA"
   ],
+  "_cod_marca_nota": "COD_MARCA sale de la tabla de referencia (ya validada por Centro+Fabricante), no del 'MARCA CODIGO' que tipea el usuario en el input — ese campo es solo de consulta (ver _diccionario_referencia_nota) y no siempre viene bien cargado. COD_MARCA reemplaza a MARCA CODIGO como fuente de 'Grupo materiales 1' en las plantillas SAP (config/salida_sap/*.json).",
 
   "_disponibilidad_nota": "Matriz Centro x Fabricante confirmada por negocio (hoja 'Unidades' de Centros_UN_RP.xlsx): 1 y 0.5 se tratan como habilitado (0.5 = por confirmar, negocio pidió tratarlo como 'sí va' por ahora), 0 = bloqueado, ese fabricante no tiene CEBE para ese centro y no puede generarse ahí aunque centros_ampliacion.xlsx tenga una fila (dato posiblemente mal cargado). Si el fabricante no aparece en esta matriz para ningún centro de la filial, se trata como fabricante nuevo/no catalogado y sigue el comportamiento normal (match o fallback a comodín). OJO: la hoja 'Unidades' no trae fila para VC03, VD03 ni VF07 (centros nuevos/aún no incorporados a esa matriz según sus propias notas) — para esos 3 centros puntuales esta validación no aplica todavía (no bloquea ni confirma nada), se comportan como antes de este cambio.",
   "disponibilidad": {

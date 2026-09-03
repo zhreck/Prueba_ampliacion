@@ -1,26 +1,28 @@
 {
   "_descripcion": "Plantilla SAP para tipo ZCAM (Camiones) - filial VA00.",
   "_nota": "Config-driven, igual esquema que zmaq.json. No hay un ejemplo de salida real para ZCAM (a diferencia de ZMAQ), así que 'defaults_confirmados_extra' acá solo trae lo que está confirmado en el propio confirmacionCampos.xlsx (no se copian los valores del ejemplo de ZMAQ sin evidencia).",
-
   "tipo_material": "ZCAM",
   "bloque_confirmacion_sap": "ZCAM",
   "rango_correlativo_nombre": "zcam_material",
-  "categoria_valoracion": { "grupo": "ZCAM" },
+  "categoria_valoracion": {
+    "grupo": "ZCAM"
+  },
   "grupo_de_compras_dinamico": true,
-  "canales_distribucion": ["20", "30"],
-
+  "canales_distribucion": [
+    "20",
+    "30"
+  ],
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
     "Grupo de artículos": "GRUPO ARTICULO",
     "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
     "Fabricante": "FABRICANTE CODIGO",
-    "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
+    "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
-    "Grupo materiales 1": "MARCA CODIGO",
+    "Grupo materiales 1": "COD_MARCA",
     "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
-
   "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM). Sector, Almacén, Perfil Pieza de Fabricante y los flags de 'Vista ...'/'Datos Basicos' salían solo evidenciados para ZMAQ, pero Seba confirmó que aplican igual a las tres plantillas de Modelos.",
   "defaults_confirmados_extra": {
     "Sector": "10",
@@ -44,14 +46,14 @@
     "Clasificación Fiscal para el material ZMWS": "0",
     "Precio Variable": "1"
   },
-
   "notas_pendientes": [
     "Centro->Cebe: ya existe en data/reference/centros_ampliacion.xlsx (32 filas para COD_SOCIEDAD==VA00, 4 fabricantes: DONG FENG DFCV/F0001, FAW/F0028, INTERNATIONAL/F0006, DONG FENG DFAC/F0022, cubriendo VA00..VA07). OJO: no hay fila F9999 (comodín 'TODAS/OTRAS MARCAS') para VA00 en la tabla — un fabricante de camión que no sea uno de esos 4 se omite con aviso, no cae a ningún comodín.",
     "Rango de material confirmado: 30000000-39999999.",
     "Grupo de compras: resuelto por filial + marca vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VA00 tiene 3 opciones según marca: M03 Faw, M04 International, M05 Dongfeng. Queda fuera a propósito 'M28 MTT Unds Usadas' (VA00): es para unidades usadas y esta ampliación ya filtra solo 'Vta. Unidades Nuevas' (config/tipos/modelos.json), así que no debería alcanzarse nunca. Una marca de VA00 fuera de esas 3 queda vacía y se reporta en el aviso 'sin grupo de compras'.",
-    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZCAM: International, Faw, Dongfeng y el comodín 'Otras Marcas', aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de camión (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía.",
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde COD_MARCA de la tabla de referencia -- no del 'MARCA CODIGO' del input, que es solo de consulta) vía config/categoria_valoracion.json (grupo ZCAM: International, Faw, Dongfeng y el comodín 'Otras Marcas', aunque ese comodín hoy no es alcanzable porque no hay fila F9999 en la tabla de referencia de VA00). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de camión (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía.",
     "Sector='10', Almacén='2000', Perfil Pieza de Fabricante='ZMP1' y los flags de 'Vista ...'/'Datos Basicos' confirmados por Seba para las tres plantillas de Modelos (arreglos_notas.txt) — antes solo estaban evidenciados para ZMAQ.",
     "Canal distribución=20/30 (canales_distribucion, cada Centro se repite una vez por canal) confirmado por Seba para Modelos, igual que en Repuestos.",
-    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ)."
+    "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZCAM todavía (solo se probó con VC00/ZMAQ).",
+    "Número de Pieza de Fabricante (NPF) sale de la columna 'NPF' del input (antes salía de 'NPF:Fabricante' por error) — corregido a pedido de Seba (arreglos_notas.txt). 'Grupo materiales 1' sale de COD_MARCA (tabla de referencia) en vez de 'MARCA CODIGO' (input) por el mismo motivo: ese campo del input es solo de consulta y podía no venir bien cargado."
   ]
 }

@@ -1,26 +1,28 @@
 {
   "_descripcion": "Plantilla SAP para tipo ZVHE (Automotriz) - filial VF00.",
   "_nota": "Rango de material confirmado por Seba: 40000000-49999999 (correlativo.py, DEFAULT_RANGOS['zvhe_material']). Si en algún momento el rango dejara de estar confirmado, basta con volver a apuntar 'rango_correlativo_nombre' a un nombre que contenga 'PENDIENTE' (sin registrarlo en correlativo.py) para que salida_sap.aplicar_plantilla_sap() vuelva a bloquear con error explícito.",
-
   "tipo_material": "ZVHE",
   "bloque_confirmacion_sap": "ZVHE",
   "rango_correlativo_nombre": "zvhe_material",
-  "categoria_valoracion": { "grupo": "ZVEH" },
+  "categoria_valoracion": {
+    "grupo": "ZVEH"
+  },
   "grupo_de_compras_dinamico": true,
-  "canales_distribucion": ["20", "30"],
-
+  "canales_distribucion": [
+    "20",
+    "30"
+  ],
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
     "Grupo de artículos": "GRUPO ARTICULO",
     "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
     "Fabricante": "FABRICANTE CODIGO",
-    "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
+    "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
-    "Grupo materiales 1": "MARCA CODIGO",
+    "Grupo materiales 1": "COD_MARCA",
     "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
-
   "_defaults_confirmados_extra_nota": "Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZVHE). Sector, Almacén, Perfil Pieza de Fabricante y los flags de 'Vista ...'/'Datos Basicos' salían solo evidenciados para ZMAQ, pero Seba confirmó que aplican igual a las tres plantillas de Modelos.",
   "defaults_confirmados_extra": {
     "Sector": "10",
@@ -44,15 +46,15 @@
     "Clasificación Fiscal para el material ZMWS": "0",
     "Precio Variable": "1"
   },
-
   "notas_pendientes": [
     "Rango de material: resuelto (40000000-49999999, confirmado por Seba).",
     "Centro->Cebe: resuelto. Seba subió la tabla real (data/reference/centros_ampliacion.xlsx), que reemplaza al symlink roto que traía el repo. Para VF00 trae 42 filas / varios fabricantes, incl. comodín F9999.",
     "Grupo de compras: resuelto vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VF00 tiene una sola opción fija ('T03 TAU Unds'), no depende de la marca a diferencia de VA00/VC00.",
-    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZVEH: Lynk&Co, ZX/ZXAuto, Riddara, Livan, KYC, Dongfeng, Lifan, Linhai, y FAW/Jetour usando 1150 'VEH. Otras Marcas' — confirmado por Seba, aunque calVal.xlsx no tenga una fila propia para esas dos marcas). Se usa la marca del vehículo y no el Fabricante porque calVal.xlsx clasifica por marca, no por quién fabricó la pieza (ver la nota en config/categoria_valoracion.json). Solo la marca comodín 'OTRAS MARCAS' (código 280) queda sin resolver a propósito — ver docs/categoria_valoracion_pendientes.md (podría ser auto o moto según el material real, no se puede saber solo con la marca comodín).",
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde COD_MARCA de la tabla de referencia -- no del 'MARCA CODIGO' del input, que es solo de consulta) vía config/categoria_valoracion.json (grupo ZVEH: Lynk&Co, ZX/ZXAuto, Riddara, Livan, KYC, Dongfeng, Lifan, Linhai, y FAW/Jetour usando 1150 'VEH. Otras Marcas' — confirmado por Seba, aunque calVal.xlsx no tenga una fila propia para esas dos marcas). Se usa la marca del vehículo y no el Fabricante porque calVal.xlsx clasifica por marca, no por quién fabricó la pieza (ver la nota en config/categoria_valoracion.json). Solo la marca comodín 'OTRAS MARCAS' (código 280) queda sin resolver a propósito — ver docs/categoria_valoracion_pendientes.md (podría ser auto o moto según el material real, no se puede saber solo con la marca comodín).",
     "Sector='10', Almacén='2000', Perfil Pieza de Fabricante='ZMP1' y los flags de 'Vista ...'/'Datos Basicos' confirmados por Seba para las tres plantillas de Modelos (arreglos_notas.txt) — antes solo estaban evidenciados para ZMAQ.",
     "Canal distribución=20/30 (canales_distribucion, cada Centro se repite una vez por canal) confirmado por Seba para Modelos, igual que en Repuestos.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal), sin evidencia propia de ZVHE.",
-    "Categoría Clase y Clase quedan siempre vacíos (confirmado por Seba en arreglos_notas.txt) — esto además resuelve la duda anterior sobre \"Clase\": \"ZMAQUINAS\" en confirmacion_campos_parsed.json para el bloque ZVHE: como el campo se fuerza vacío, ese valor ya no se usa."
+    "Categoría Clase y Clase quedan siempre vacíos (confirmado por Seba en arreglos_notas.txt) — esto además resuelve la duda anterior sobre \"Clase\": \"ZMAQUINAS\" en confirmacion_campos_parsed.json para el bloque ZVHE: como el campo se fuerza vacío, ese valor ya no se usa.",
+    "Número de Pieza de Fabricante (NPF) sale de la columna 'NPF' del input (antes salía de 'NPF:Fabricante' por error) — corregido a pedido de Seba (arreglos_notas.txt). 'Grupo materiales 1' sale de COD_MARCA (tabla de referencia) en vez de 'MARCA CODIGO' (input) por el mismo motivo: ese campo del input es solo de consulta y podía no venir bien cargado."
   ]
 }

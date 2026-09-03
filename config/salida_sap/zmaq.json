@@ -1,26 +1,28 @@
 {
   "_descripcion": "Plantilla SAP para tipo ZMAQ (Maquinarias) - filiales VC00, VD00, VE00. Comparten esta misma plantilla y el mismo rango de número de material (docs/mapeo_filiales.json).",
   "_nota": "Config-driven: acá solo van (a) mapeos de columnas ya ampliadas -> columnas SAP y (b) valores evidenciados en un ejemplo de salida real. Los defaults confirmados por negocio viven en docs/confirmacion_campos_parsed.json (bloque ZMAQ_ttm) y las reglas universales (Transaccion, Material, Org. Ventas, Jerarquía SD) están en salida_sap.py, no acá.",
-
   "tipo_material": "ZMAQ",
   "bloque_confirmacion_sap": "ZMAQ_ttm",
   "rango_correlativo_nombre": "zmaq_material",
-  "categoria_valoracion": { "grupo": "ZMAQ" },
+  "categoria_valoracion": {
+    "grupo": "ZMAQ"
+  },
   "grupo_de_compras_dinamico": true,
-  "canales_distribucion": ["20", "30"],
-
+  "canales_distribucion": [
+    "20",
+    "30"
+  ],
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
     "Grupo de artículos": "GRUPO ARTICULO",
     "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "JERARQUIA",
     "Fabricante": "FABRICANTE CODIGO",
-    "Número de Pieza de Fabricante (NPF)": "NPF:Fabricante",
+    "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
-    "Grupo materiales 1": "MARCA CODIGO",
+    "Grupo materiales 1": "COD_MARCA",
     "Condición Almacenaje": "UNIDAD DE MEDIDA"
   },
-
   "_defaults_confirmados_extra_nota": "Los flags de 'Vista ...', Sector, Sujeto-lote, Canal distribución y Perfil Pieza de Fabricante salen de docs/ejemplo_output_ZMAQ_VC00.xlsx (salida real). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat., Precio Variable y (solo acá, para TTM) Grupo de compras fueron confirmados directamente por Seba en arreglos_notas.txt.",
   "defaults_confirmados_extra": {
     "Sector": "10",
@@ -44,13 +46,13 @@
     "Clasificación Fiscal para el material ZMWS": "0",
     "Precio Variable": "1"
   },
-
   "notas_pendientes": [
     "Centro->Cebe: ahora sale de data/reference/centros_ampliacion.xlsx (tabla única confirmada, filtrada por FILIAL CODIGO==COD_SOCIEDAD), que cubre VC00 (9 centros, incl. VC03/VC08), VD00 (9 centros, un solo fabricante LIUGONG/F0016, sin comodín F9999) y VE00 (2 centros, un solo fabricante MAXIMAL/F0010, sin comodín). Un fabricante que no esté en la tabla para VD00/VE00 se omite con aviso, no se inventa nada.",
     "⚠️ DISCREPANCIA DE DATOS a confirmar con negocio: para VC00 + HYSTER/F0012, docs/ejemplo_output_ZMAQ_VC00.xlsx (salida real ya usada en producción) trae Centro de beneficio con sufijo '02' (ej. VCLN02QCHY), pero data/reference/centros_ampliacion.xlsx (la tabla que Seba confirmó como la 'de verdad') trae sufijo '01' (VCLN01QCHY) para el mismo Centro+Fabricante. Se está usando el valor de la tabla de referencia ('01') por ser la fuente viva/confirmada, pero falta que Seba confirme si el ejemplo quedó desactualizado o si la tabla tiene un error.",
-    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde MARCA CODIGO) vía config/categoria_valoracion.json (grupo ZMAQ: HMK/Hidromek, Hyster, Liugong, Maximal, Terberg, Trelleborg y el comodín 'Otras Marcas' — confirmado con el ejemplo real, marca HYSTER(100)=1410). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de máquina (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía y se reporta en el aviso 'sin categoría de valoración'.",
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde COD_MARCA de la tabla de referencia -- no del 'MARCA CODIGO' del input, que es solo de consulta) vía config/categoria_valoracion.json (grupo ZMAQ: HMK/Hidromek, Hyster, Liugong, Maximal, Terberg, Trelleborg y el comodín 'Otras Marcas' — confirmado con el ejemplo real, marca HYSTER(100)=1410). Se usa la marca y no el Fabricante porque calVal.xlsx clasifica por marca de máquina (ver nota en config/categoria_valoracion.json). Una marca fuera de esa lista queda vacía y se reporta en el aviso 'sin categoría de valoración'.",
     "Grupo de compras: resuelto por filial + marca vía config/grupo_compras.json (tabla que Seba pasó en arreglos_notas.txt) — VC00 tiene 3 opciones según marca (Q03 Hyster, Q04 HMK, Q05 Terberg), VD00 una sola (Q08 Liugong) y VE00 una sola (Q06 Maximal). Antes había un valor fijo 'Q03' para toda la plantilla, que en realidad solo era correcto para VC00+Hyster — quedaba mal para VD00, VE00 y para VC00 con otra marca. Una marca de VC00 fuera de esas 3 queda vacía y se reporta en el aviso 'sin grupo de compras'.",
     "Org. Ventas se infiere como el código de FILIAL CODIGO de la fila (regla universal en salida_sap.py), evidenciado solo con VC00. Si alguna filial de ZMAQ tuviera una Org. Ventas distinta de su propio código, avisar para ajustar.",
-    "Almacén='2000' y Canal distribución=20/30 (canales_distribucion, cada Centro se repite una vez por canal) confirmados por Seba para las tres plantillas de Modelos (arreglos_notas.txt) — antes 'Canal distribución' era un valor fijo único ('30') tomado del ejemplo real; ahora se generan ambas filas (20 y 30) igual que en Repuestos."
+    "Almacén='2000' y Canal distribución=20/30 (canales_distribucion, cada Centro se repite una vez por canal) confirmados por Seba para las tres plantillas de Modelos (arreglos_notas.txt) — antes 'Canal distribución' era un valor fijo único ('30') tomado del ejemplo real; ahora se generan ambas filas (20 y 30) igual que en Repuestos.",
+    "Número de Pieza de Fabricante (NPF) sale de la columna 'NPF' del input (antes salía de 'NPF:Fabricante' por error) — corregido a pedido de Seba (arreglos_notas.txt). 'Grupo materiales 1' sale de COD_MARCA (tabla de referencia) en vez de 'MARCA CODIGO' (input) por el mismo motivo: ese campo del input es solo de consulta y podía no venir bien cargado."
   ]
 }
