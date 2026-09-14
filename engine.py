@@ -18,6 +18,8 @@ from pathlib import Path
 
 import openpyxl
 import pandas as pd
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 import correlativo
 
@@ -93,6 +95,7 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
                 celda.value = None
         # Las hojas de diccionario del archivo real ya vienen con formato
         # correcto — no hace falta reconstruirlas con _agregar_hoja_diccionario.
+        _agregar_validaciones_desde_traduccion(wb, ws, cfg)
         return wb
 
     wb = openpyxl.Workbook()
@@ -115,6 +118,74 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
         _agregar_hoja_diccionario(wb, diccionario_cfg)
 
     return wb
+
+
+def _agregar_validaciones_desde_traduccion(wb: "openpyxl.Workbook", ws, cfg: dict) -> None:
+    """
+    Agrega listas desplegables de Excel a las columnas del input que se
+    traducen por nombre (ver "traduccion_nombres" en config/tipos/*.json),
+    para que el usuario solo pueda elegir un valor que el backend después
+    sabe traducir a código — evita que escriba algo que no está en ningún
+    diccionario (pedido explícito de Seba para Filial, Grupo de Artículo,
+    Texto jerarquía, ORIGINAL_ALTERNATIVO, Marca y Fabricante). La lista de
+    cada columna sale de la MISMA regla que usa el backend para traducir
+    (el "mapa" a mano, o la hoja+columna del diccionario real), así que
+    nunca puede quedar desincronizada con lo que realmente se acepta.
+
+    Columnas que ya traían una validación funcionando en el archivo
+    original (Serie o Lote?, Unidad Medida, Moneda) no se tocan. Una que
+    esté rota (ej. la de Marca/Fabricante venía con "#REF!", una referencia
+    perdida del archivo original) se reemplaza por una que sí funciona.
+    """
+    columnas = cfg["input_columns"]
+
+    columnas_con_validacion_propia = set()
+    for dv in list(ws.data_validations.dataValidation):
+        if str(dv.formula1) == "#REF!":
+            ws.data_validations.dataValidation.remove(dv)
+            continue
+        for rango in dv.sqref.ranges:
+            columnas_con_validacion_propia.add(rango.min_col)
+
+    for regla in cfg.get("traduccion_nombres", []):
+        col_origen = regla["columna_origen"]
+        if col_origen not in columnas:
+            continue
+        col_idx = columnas.index(col_origen) + 1
+        if col_idx in columnas_con_validacion_propia:
+            continue
+        letra = get_column_letter(col_idx)
+        rango_destino = f"{letra}2:{letra}1048576"
+
+        if regla["tipo"] == "mapa":
+            opciones = ",".join(str(k) for k in regla["mapa"].keys())
+            dv = DataValidation(type="list", formula1=f'"{opciones}"', allow_blank=True)
+        else:  # "diccionario" o "jerarquia": la lista sale de la hoja real bundleada
+            nombre_hoja = regla["diccionario_sheet"]
+            if nombre_hoja not in wb.sheetnames:
+                continue
+            ws_dicc = wb[nombre_hoja]
+            col_nombre = regla.get("col_nombre") or regla.get("col_texto_completo")
+            col_letra_dicc = next(
+                (get_column_letter(c) for c in range(1, ws_dicc.max_column + 1)
+                 if ws_dicc.cell(row=1, column=c).value == col_nombre),
+                None,
+            )
+            if not col_letra_dicc:
+                continue
+            col_num_dicc = openpyxl.utils.column_index_from_string(col_letra_dicc)
+            ultima_fila_con_dato = max(
+                (r for r in range(1, ws_dicc.max_row + 1) if ws_dicc.cell(row=r, column=col_num_dicc).value not in (None, "")),
+                default=1,
+            )
+            dv = DataValidation(
+                type="list",
+                formula1=f"'{nombre_hoja}'!${col_letra_dicc}$2:${col_letra_dicc}${ultima_fila_con_dato}",
+                allow_blank=True,
+            )
+
+        dv.add(rango_destino)
+        ws.add_data_validation(dv)
 
 
 def _agregar_hoja_diccionario(wb: "openpyxl.Workbook", diccionario_cfg: dict) -> None:
@@ -368,22 +439,25 @@ def _validar_filas(df: pd.DataFrame, cfg_validaciones: dict) -> tuple[pd.DataFra
                     continue
                 crudo = str(df.at[i, col_costo]).strip()
                 try:
-                    float(crudo.replace(",", "."))
+                    valor = float(crudo.replace(",", "."))
                 except ValueError:
                     malos.at[i] = True
                     continue
-                # No importa el valor numérico en sí, sino el FORMATO: si el
-                # texto trae separador decimal (. o ,, este último común en
-                # formato chileno, ej. "10,01") cuenta como float aunque el
-                # valor matemático termine siendo un entero (ej. "1000,00").
-                tiene_separador_decimal = "." in crudo or "," in crudo
-                if regla == "int" and tiene_separador_decimal:
-                    malos.at[i] = True
-                elif regla == "float" and not tiene_separador_decimal:
+                # Una vez que Excel tiene la celda como número real, no hay
+                # forma de saber si el usuario "escribió" decimales o no
+                # (1000 y 1000.00 son el mismo float) — la única regla
+                # verificable de forma confiable es matemática: si es CLP,
+                # no puede tener centavos reales (el peso chileno no tiene
+                # decimales). USD sí puede tener centavos, pero no los
+                # exige — un monto entero en USD (1000.00) es válido igual
+                # (confirmado por Seba), así que del lado "float" no se
+                # rechaza nada, solo se valida que sea un número.
+                es_entero = valor == int(valor)
+                if regla == "int" and not es_entero:
                     malos.at[i] = True
             if malos.any():
                 avisos.append(
-                    f"'{col_costo}'/'{col_moneda}' inconsistentes (CLP debe ser entero, USD debe tener decimales) "
+                    f"'{col_costo}'/'{col_moneda}' inconsistentes (CLP no puede tener centavos) "
                     f"en {malos.sum()} fila(s) — fila(s) omitida(s)."
                 )
                 filas_validas &= ~malos

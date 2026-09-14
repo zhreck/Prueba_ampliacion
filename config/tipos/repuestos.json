@@ -138,7 +138,7 @@
       "columna_costo": "Costo Unitario (Referencia)",
       "columna_moneda": "Moneda",
       "reglas": { "CLP": "int", "USD": "float" },
-      "_nota": "Solo se valida cuando AMBOS campos vienen con dato (los dos son opcionales). CLP tiene que ser un número entero (sin decimales); USD tiene que traer decimales."
+      "_nota": "Solo se valida cuando AMBOS campos vienen con dato (los dos son opcionales). Solo la regla 'int' (CLP) rechaza algo -- el peso chileno no tiene centavos, así que un CLP con decimales reales (ej. 5000.50) es un error. 'float' (USD) no rechaza por monto entero: Seba confirmó que un precio en USD sin centavos (ej. 1000.00) es válido igual, y una vez que Excel guarda el costo como número real no hay forma de distinguir '1000' de '1000.00' — solo se exige que sea un número válido."
     }
   },
 
