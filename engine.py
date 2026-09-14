@@ -214,6 +214,25 @@ def _traducir_columna(df: pd.DataFrame, regla: dict) -> tuple[pd.DataFrame, list
         dicc_df = pd.read_excel(origen_path, sheet_name=regla["diccionario_sheet"], dtype=str, keep_default_na=False)
         dicc_df = dicc_df.dropna(subset=[regla["col_nombre"], regla["col_codigo"]])
         mapa = dict(zip(dicc_df[regla["col_nombre"]], dicc_df[regla["col_codigo"]]))
+    elif regla["tipo"] == "jerarquia":
+        # Caso especial: el código no es una columna del diccionario, sino la
+        # concatenación de 3 (Nivel 1/2/3, cada uno con cero a la izquierda a
+        # un ancho fijo) — evidenciado en el único ejemplo real disponible
+        # (docs/ejemplo_output_ZMAQ_VC00.xlsx: "002030000100000002" = Nivel 1
+        # "00203" + Nivel 2 "00001" + Nivel 3 "00000002"). El match es exacto
+        # porque el input trae el camino COMPLETO (ej. "FAW TRUCK REPUESTOS -
+        # REFRIGERACION - BOMBAS"), igual que la columna "Texto Jerarquía"
+        # del diccionario -- no el nombre de la hoja suelto (que sí se repite
+        # muchas veces entre marcas/negocios).
+        origen_path = BASE_DIR / regla["diccionario_file"]
+        dicc_df = pd.read_excel(origen_path, sheet_name=regla["diccionario_sheet"], dtype=str, keep_default_na=False)
+        dicc_df = dicc_df.dropna(subset=[regla["col_texto_completo"]])
+        codigo = (
+            dicc_df[regla["col_nivel1"]].str.zfill(regla["ancho_nivel1"])
+            + dicc_df[regla["col_nivel2"]].fillna("").str.zfill(regla["ancho_nivel2"])
+            + dicc_df[regla["col_nivel3"]].fillna("").str.zfill(regla["ancho_nivel3"])
+        )
+        mapa = dict(zip(dicc_df[regla["col_texto_completo"]], codigo))
     else:
         raise InputInvalidoError(f"Tipo de traducción desconocido: {regla['tipo']}")
 
@@ -297,14 +316,18 @@ def _validar_filas(df: pd.DataFrame, cfg_validaciones: dict) -> tuple[pd.DataFra
                     continue
                 crudo = str(df.at[i, col_costo]).strip()
                 try:
-                    valor = float(crudo)
+                    float(crudo.replace(",", "."))
                 except ValueError:
                     malos.at[i] = True
                     continue
-                es_entero = valor == int(valor) and "." not in crudo and "," not in crudo
-                if regla == "int" and not es_entero:
+                # No importa el valor numérico en sí, sino el FORMATO: si el
+                # texto trae separador decimal (. o ,, este último común en
+                # formato chileno, ej. "10,01") cuenta como float aunque el
+                # valor matemático termine siendo un entero (ej. "1000,00").
+                tiene_separador_decimal = "." in crudo or "," in crudo
+                if regla == "int" and tiene_separador_decimal:
                     malos.at[i] = True
-                elif regla == "float" and es_entero:
+                elif regla == "float" and not tiene_separador_decimal:
                     malos.at[i] = True
             if malos.any():
                 avisos.append(

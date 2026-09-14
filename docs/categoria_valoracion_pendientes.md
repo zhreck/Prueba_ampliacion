@@ -1,4 +1,4 @@
-Combinaciones de `data/reference/calVal.xlsx` que NO se cargaron en
+Combinaciones de `data/reference/Repuestos/calVal.xlsx` que NO se cargaron en
 `config/categoria_valoracion.json` porque no son un match único —
 completar/confirmar con Seba antes de agregarlas.
 

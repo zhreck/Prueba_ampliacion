@@ -14,8 +14,15 @@
   },
   "_rango_nota": "Rango CONFIRMADO por Seba: 50000000-79999999 (correlativo.py, DEFAULT_RANGOS['repuestos_material']), compartido con ZRP1/ZRP3.",
   "canales_distribucion_por_filial": {
-    "VF00": ["10", "20", "30"],
-    "_default": ["20", "30"]
+    "VF00": [
+      "10",
+      "20",
+      "30"
+    ],
+    "_default": [
+      "20",
+      "30"
+    ]
   },
   "_canales_nota": "Igual que ZRP1/ZRP3 (sin ejemplo propio de ZRP2 todavía): cada centro se repite una vez por Canal distribución. VF00 pasa a 10/20/30 (confirmado por Seba); el resto de filiales sigue en 20/30.",
   "campos_desde_ampliado": {
@@ -28,10 +35,8 @@
     "Grupo materiales 2": "CODIGO ORIGINAL_ALTERNATIVO",
     "Fabricante": "CODIGO FABRICANTE",
     "Número de Pieza de Fabricante (NPF)": "NPF",
-    "Centro de beneficio": "COD_CEBE"
-  },
-  "pendientes_extra": {
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "PENDIENTE: el nuevo input trae 'Texto jerarquía' por nombre, pero todavía no se traduce a código — ver _jerarquia_nota en config/tipos/repuestos.json."
+    "Centro de beneficio": "COD_CEBE",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA"
   },
   "_campos_desde_ampliado_nota": "Idéntico a zrp1.json — clonado a falta de un ejemplo de salida real propio de ZRP2.",
   "defaults_confirmados_extra": {
@@ -75,7 +80,7 @@
     "⚠️ Plantilla SIN ejemplo de salida real propio — clonada de zrp1.json. Confirmar con Seba si 'Con Lote' necesita algún campo/flag adicional que ZRP1 no tiene.",
     "Rango de material: CONFIRMADO (50000000-79999999), compartido con ZRP1/ZRP3.",
     "'Serie o Lote?'='Con Lote' en el input determina que ese material se genera como ZRP2 (ver app.py, split por 'TIPO MATERIAL REPUESTO' antes de llamar a esta función) — no es un campo de esta plantilla.",
-    "Jerarquía productos: PENDIENTE, ver 'pendientes_extra' arriba y _jerarquia_nota en config/tipos/repuestos.json.",
-    "Categoría valoración: resuelta por MARCA y filial vía config/categoria_valoracion.json, igual que ZRP1/ZRP3 (ver notas ahí)."
+    "Categoría valoración: resuelta por MARCA y filial vía config/categoria_valoracion.json, igual que ZRP1/ZRP3 (ver notas ahí).",
+    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
   ]
 }

@@ -91,10 +91,20 @@
       "diccionario_sheet": "Diccionario Original-Alternativ",
       "col_nombre": "Descripción",
       "col_codigo": "Clave"
+    },
+    {
+      "tipo": "jerarquia",
+      "columna_origen": "Texto jerarquía",
+      "columna_destino": "CODIGO JERARQUIA",
+      "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "diccionario_sheet": "Diccionario Jerarquías",
+      "col_texto_completo": "Texto Jerarquía",
+      "col_nivel1": "Nivel 1", "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2", "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3", "ancho_nivel3": 8,
+      "_nota": "El input trae el camino COMPLETO (ej. 'FAW TRUCK REPUESTOS - REFRIGERACION - BOMBAS'), igual que la columna 'Texto Jerarquía' del diccionario -- no el nombre de hoja suelto (ej. 'BOMBAS'), que sí se repite muchas veces entre marcas/negocios y sería ambiguo. El código resultante es Nivel1(5)+Nivel2(5)+Nivel3(8) concatenado, formato confirmado con el único ejemplo real disponible (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
     }
   ],
-
-  "_jerarquia_nota": "⚠️ PENDIENTE a propósito: 'Texto jerarquía' del input NO se traduce todavía. La hoja 'Diccionario Jerarquías' tiene 1607 nombres hoja (ej. 'CABLES') repetidos hasta 14 veces, uno por cada rama marca+negocio (ej. 'FAW REPUESTO' auto vs 'FAW TRUCK REPUESTOS' camión) -- resolverlo bien necesita cruzar marca+filial para elegir la rama y ahí buscar el nombre, y Seba dijo que el ejemplo que ya está en el repo puede tener casos mal puestos (ej. Lifan) y que va a subir uno más completo. Hasta que llegue ese archivo, 'Jerarquía productos' queda vacío en la salida SAP (ver notas_pendientes de zrp1/zrp2/zrp3.json).",
 
   "validaciones": {
     "_nota": "Filas que no pasan alguna de estas reglas se excluyen (con aviso), nunca se corrigen solas.",

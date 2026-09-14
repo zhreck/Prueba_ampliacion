@@ -14,8 +14,15 @@
   },
   "_rango_nota": "Rango CONFIRMADO por Seba: 50000000-79999999 (correlativo.py, DEFAULT_RANGOS['repuestos_material']), compartido con ZRP2/ZRP3.",
   "canales_distribucion_por_filial": {
-    "VF00": ["10", "20", "30"],
-    "_default": ["20", "30"]
+    "VF00": [
+      "10",
+      "20",
+      "30"
+    ],
+    "_default": [
+      "20",
+      "30"
+    ]
   },
   "_canales_nota": "Evidenciado en el ejemplo real: cada centro se repite una vez por Canal distribución (20 y 30), a diferencia de Modelos/Maquinaria donde el canal es un valor fijo único. VF00 pasa a 10/20/30 (confirmado por Seba); el resto de filiales sigue en 20/30.",
   "campos_desde_ampliado": {
@@ -28,10 +35,8 @@
     "Grupo materiales 2": "CODIGO ORIGINAL_ALTERNATIVO",
     "Fabricante": "CODIGO FABRICANTE",
     "Número de Pieza de Fabricante (NPF)": "NPF",
-    "Centro de beneficio": "COD_CEBE"
-  },
-  "pendientes_extra": {
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "PENDIENTE: el nuevo input trae 'Texto jerarquía' por nombre, pero todavía no se traduce a código — el diccionario de jerarquías tiene nombres repetidos entre marcas/negocios y Seba va a subir un ejemplo más completo antes de resolverlo (ver _jerarquia_nota en config/tipos/repuestos.json)."
+    "Centro de beneficio": "COD_CEBE",
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA"
   },
   "_campos_desde_ampliado_nota": "'Nº antiguo material' y 'Número de artículo Europeo' = mismo valor que NPF (evidenciado: en el ejemplo real coinciden exactamente, algo que no pasa en Modelos/Maquinaria donde ambos quedan vacíos). 'Grupo materiales 2' <- CODIGO ORIGINAL_ALTERNATIVO: código 010/020, traducido desde el nombre ORIGINAL/ALTERNATIVO del input vía config/tipos/repuestos.json (traduccion_nombres).",
   "defaults_confirmados_extra": {
@@ -74,7 +79,7 @@
   "notas_pendientes": [
     "Rango de material: CONFIRMADO (50000000-79999999), compartido con ZRP2/ZRP3.",
     "'Serie o Lote?'='N/A' en el input determina que ese material se genera como ZRP1 (ver app.py, split por 'TIPO MATERIAL REPUESTO' antes de llamar a esta función) — no es un campo de esta plantilla.",
-    "Jerarquía productos: PENDIENTE, ver 'pendientes_extra' arriba y _jerarquia_nota en config/tipos/repuestos.json.",
-    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde CODIGO MARCA) y filial vía config/categoria_valoracion.json (grupos ZREP_CAMIONES/ZREP_MAQUINARIAS/ZREP_VEHICULOS, elegido según 'Org. Ventas' — confirmado por Seba: VA00=Camiones, VC00/VD00/VE00=Maquinarias, VF00=Vehículos/Motos). Se cambió de Fabricante a Marca como clave porque en Repuestos el Fabricante es quien fabrica la pieza (puede ser un tercero genérico, ej. F0058/NACIONAL) y no necesariamente la marca del vehículo/máquina al que corresponde (ver nota en config/categoria_valoracion.json). HYSTER (marca 100) -> 1600 confirmado por Seba (calVal.xlsx tenía dos filas duplicadas, 1600 y 1620, con la misma descripción)."
+    "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde CODIGO MARCA) y filial vía config/categoria_valoracion.json (grupos ZREP_CAMIONES/ZREP_MAQUINARIAS/ZREP_VEHICULOS, elegido según 'Org. Ventas' — confirmado por Seba: VA00=Camiones, VC00/VD00/VE00=Maquinarias, VF00=Vehículos/Motos). Se cambió de Fabricante a Marca como clave porque en Repuestos el Fabricante es quien fabrica la pieza (puede ser un tercero genérico, ej. F0058/NACIONAL) y no necesariamente la marca del vehículo/máquina al que corresponde (ver nota en config/categoria_valoracion.json). HYSTER (marca 100) -> 1600 confirmado por Seba (calVal.xlsx tenía dos filas duplicadas, 1600 y 1620, con la misma descripción).",
+    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
   ]
 }
