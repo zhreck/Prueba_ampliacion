@@ -138,12 +138,11 @@ def procesar():
                     # Con Serie->ZRP3, ya traducido a "TIPO MATERIAL REPUESTO"
                     # por engine.py) — puede haber una mezcla de los 3 en el
                     # mismo archivo.
-                    partes_sap = []
+                    partes_sap_por_tipo = {}
                     pendientes = {}
                     obligatorios_vacios = []
                     marcas_sin_categoria = set()
                     marcas_sin_grupo_compras = set()
-                    tipos_material_usados = []
                     for tipo_material_sap in ("ZRP1", "ZRP2", "ZRP3"):
                         subset = resultado_df[resultado_df["TIPO MATERIAL REPUESTO"] == tipo_material_sap]
                         if subset.empty:
@@ -154,14 +153,11 @@ def procesar():
                                 f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
                             )
                         df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
-                        partes_sap.append(df_parte)
+                        partes_sap_por_tipo[tipo_material_sap] = df_parte
                         pendientes.update(meta_parte.get("campos_pendientes", {}))
                         obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
                         marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
                         marcas_sin_grupo_compras.update(meta_parte.get("marcas_sin_grupo_compras", []))
-                        tipos_material_usados.append(tipo_material_sap)
-                    df_salida = pd.concat(partes_sap, ignore_index=True)
-                    nombre_sheet = "SAP_" + "_".join(tipos_material_usados)
                 else:
                     tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
                     df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
@@ -206,10 +202,26 @@ def procesar():
         flash(a, "warning")
 
     buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+    if generar_sap and tipo_id == "repuestos":
+        # El programa que carga esto a SAP espera el mismo layout que
+        # PlanillaCargaTattersall_Repuestos_ouput.xlsx (encabezados hasta la
+        # fila 5, datos desde la fila 6) — una hoja por tipo de material
+        # (ZRP1/ZRP2/ZRP3), no todo junto en una sola hoja simple.
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+        for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
+            salida_sap.escribir_hoja_sap_repuestos(wb, tipo_material_sap, df_parte)
         if df_pendientes is not None:
-            df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
+            ws_pend = wb.create_sheet(title="PENDIENTES")
+            ws_pend.append(list(df_pendientes.columns))
+            for fila in df_pendientes.itertuples(index=False):
+                ws_pend.append(list(fila))
+        wb.save(buffer)
+    else:
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+            if df_pendientes is not None:
+                df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"
     nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"

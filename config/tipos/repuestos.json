@@ -6,6 +6,11 @@
   "_nota": "Esquema de input real v2, tomado de data/reference/Repuestos/plantilla_repuestos.xlsx (hoja Input) — reemplaza al esquema anterior (ZRP1_ZRP3.xlsx, eliminado). Cambio principal: el input ahora es por NOMBRE (marca, fabricante, filial, grupo de artículo, original/alternativo) en vez de por código; 'traduccion_nombres' abajo traduce cada nombre a su código antes de que el resto del motor procese la fila (que sigue trabajando con códigos, sin cambios). SERIADO/NRO SERIE del esquema viejo se reemplazan por 'Serie o Lote?' (N/A/Con Lote/Con Serie), que ahora define ZRP1/ZRP2/ZRP3 (antes solo existían ZRP1/ZRP3).",
 
   "input_sheet": "Input",
+  "plantilla_desde_archivo": {
+    "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+    "sheet": "Input"
+  },
+  "_plantilla_desde_archivo_nota": "La plantilla descargable clona este archivo tal cual (formato, colores, anchos de columna y las listas desplegables de Excel: Serie o Lote?, Unidad Medida, Moneda) en vez de armar la hoja de cero — así el usuario ve las mismas validaciones que tenía el archivo original. Solo se borran los valores de las filas de ejemplo.",
   "input_columns": [
     "Filial",
     "Unidad Medida (UM)",

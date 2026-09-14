@@ -62,9 +62,11 @@ import json
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 
+import openpyxl
 import pandas as pd
 
 import correlativo
+import engine
 
 BASE_DIR = Path(__file__).parent
 CONFIG_DIR = BASE_DIR / "config" / "salida_sap"
@@ -314,6 +316,34 @@ def aplicar_plantilla_sap(
     }
 
     return df_sap, metadatos
+
+
+PLANILLA_CARGA_REPUESTOS_PATH = BASE_DIR / "data" / "reference" / "Repuestos" / "PlanillaCargaTattersall_Repuestos_ouput.xlsx"
+FILAS_ENCABEZADO_REPUESTOS = 5  # filas 1-5 = título/grupos/header/obligatorio/defaults; los datos van desde la fila 6.
+
+
+def escribir_hoja_sap_repuestos(wb: "openpyxl.Workbook", tipo_material: str, df_sap: pd.DataFrame) -> None:
+    """
+    Crea la hoja de salida de un tipo de material de Repuestos (ZRP1/ZRP2/
+    ZRP3) clonando las primeras 5 filas (título, agrupación de secciones,
+    nombres de columna, flags "Obligatorio" y notas de valor por defecto) de
+    la hoja real correspondiente en PlanillaCargaTattersall_Repuestos_ouput.xlsx
+    -- con el mismo formato -- y agregando los datos generados desde la fila
+    6. Seba confirmó que el programa que carga esto a SAP empieza a leer
+    desde ahí, así que el archivo que se descarga tiene que calzar con ese
+    layout, no alcanza con un header simple en la fila 1.
+    """
+    wb_origen = openpyxl.load_workbook(PLANILLA_CARGA_REPUESTOS_PATH, data_only=True)
+    ws_origen = wb_origen[tipo_material]
+
+    ws = wb.create_sheet(title=tipo_material)
+    engine._clonar_hoja(ws_origen, ws, max_filas=FILAS_ENCABEZADO_REPUESTOS)
+
+    fila_destino = FILAS_ENCABEZADO_REPUESTOS + 1
+    for fila in df_sap.itertuples(index=False):
+        for col_idx, valor in enumerate(fila, start=1):
+            ws.cell(row=fila_destino, column=col_idx, value=valor)
+        fila_destino += 1
 
 
 def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:

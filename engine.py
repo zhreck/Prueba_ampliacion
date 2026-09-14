@@ -12,6 +12,7 @@ Para agregar un tipo nuevo (ej. Repuestos) más adelante:
   3. Listo — aparece automático en el selector de la web.
 """
 
+import copy
 import json
 from pathlib import Path
 
@@ -41,7 +42,12 @@ def listar_tipos() -> list[dict]:
             "id": cfg["id"],
             "nombre": cfg["nombre"],
             "descripcion": cfg.get("descripcion", ""),
-            "tiene_diccionario": bool(cfg.get("diccionario_referencia") or cfg.get("diccionarios_referencia")),
+            # Solo mostrar un botón de diccionario APARTE cuando no viene ya
+            # bundleado en la plantilla (Modelos: diccionario_referencia,
+            # singular, no se bundlea). Repuestos (diccionarios_referencia,
+            # plural) ya trae todo en el mismo archivo de la plantilla — un
+            # segundo botón sería redundante y confuso.
+            "tiene_diccionario": bool(cfg.get("diccionario_referencia")),
         })
     return tipos
 
@@ -56,16 +62,38 @@ def cargar_config(tipo_id: str) -> dict:
 
 def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.Workbook":
     """
-    Arma un Excel vacío con la hoja y columnas de input del tipo (solo
-    encabezados), para que alguien sin el Excel original tenga de dónde
-    partir. Las columnas de texto (config "text_columns") quedan con
-    formato de celda texto ('@') en las filas vacías, para evitar el
-    problema de siempre (ceros iniciales / notación científica) sin tener
-    que explicarle al usuario que las formatee él mismo.
+    Arma un Excel vacío con la hoja y columnas de input del tipo, para que
+    alguien sin el Excel original tenga de dónde partir.
+
+    Si la config tiene "plantilla_desde_archivo" (Repuestos), se CLONA la
+    hoja de input real tal cual (mismo formato, colores, anchos de columna y
+    validaciones/listas desplegables de Excel — ej. Serie o Lote?, Unidad
+    Medida, Moneda) y solo se le borran los valores de las filas de ejemplo,
+    en vez de armar una hoja nueva desde cero que perdía todo eso. Si no
+    (Modelos), se sigue armando desde cero como antes, con formato de celda
+    texto ('@') en las columnas de "text_columns" para evitar el problema de
+    siempre (ceros iniciales / notación científica).
     """
     cfg = cargar_config(tipo_id)
     columnas = cfg["input_columns"]
     text_columns = set(cfg.get("text_columns", []))
+
+    plantilla_real = cfg.get("plantilla_desde_archivo")
+    if plantilla_real:
+        origen_path = BASE_DIR / plantilla_real["reference_file"]
+        wb = openpyxl.load_workbook(origen_path)
+        ws = wb[plantilla_real["sheet"]]
+        if ws.title != cfg["input_sheet"]:
+            ws.title = cfg["input_sheet"]
+        # Borra los valores de las filas de ejemplo (fila 2 en adelante) sin
+        # tocar formato, anchos de columna ni validaciones — esas quedan
+        # intactas porque son propiedades de la hoja/rango, no de la celda.
+        for fila in ws.iter_rows(min_row=2, max_row=max(ws.max_row, filas_vacias + 1)):
+            for celda in fila:
+                celda.value = None
+        # Las hojas de diccionario del archivo real ya vienen con formato
+        # correcto — no hace falta reconstruirlas con _agregar_hoja_diccionario.
+        return wb
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -80,10 +108,9 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
     for col_idx, nombre_col in enumerate(columnas, start=1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(14, len(nombre_col) + 2)
 
-    # A diferencia de Modelos (que ya tiene un botón de descarga aparte para
-    # su diccionario), el cliente pidió que en Repuestos el input y los
-    # diccionarios vengan juntos en un solo archivo, cada uno en su propia
-    # hoja (ver "diccionarios_referencia" en config/tipos/repuestos.json).
+    # Modelos: el diccionario NO se bundlea acá (ya tiene un botón de
+    # descarga aparte) — ver diccionario_referencia (singular) vs.
+    # diccionarios_referencia (plural, Repuestos) en app.py/_agregar_hoja_diccionario.
     for diccionario_cfg in cfg.get("diccionarios_referencia", []):
         _agregar_hoja_diccionario(wb, diccionario_cfg)
 
@@ -91,8 +118,10 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
 
 
 def _agregar_hoja_diccionario(wb: "openpyxl.Workbook", diccionario_cfg: dict) -> None:
-    """Copia tal cual una hoja de referencia (ej. un diccionario de códigos)
-    como hoja extra de la plantilla descargable."""
+    """Copia una hoja de referencia (ej. un diccionario de códigos) como hoja
+    extra de la plantilla descargable, preservando formato (colores, anchos
+    de columna, formato de celda texto '@' para que no se pierdan ceros a la
+    izquierda) — no solo los valores."""
     origen_path = BASE_DIR / diccionario_cfg["reference_file"]
     if not origen_path.exists():
         return
@@ -100,8 +129,31 @@ def _agregar_hoja_diccionario(wb: "openpyxl.Workbook", diccionario_cfg: dict) ->
     ws_origen = wb_origen[diccionario_cfg["sheet"]]
 
     ws_destino = wb.create_sheet(title=diccionario_cfg.get("titulo_hoja", "DICCIONARIO")[:31])
-    for fila in ws_origen.iter_rows(values_only=True):
-        ws_destino.append(fila)
+    _clonar_hoja(ws_origen, ws_destino)
+
+
+def _clonar_hoja(ws_origen, ws_destino, max_filas: int | None = None) -> None:
+    """Copia valores + formato (fuente, relleno, alineación, formato de
+    número) celda por celda, más anchos de columna. `max_filas` limita
+    cuántas filas de datos copiar (útil para no clonar decenas de miles de
+    filas vacías de una plantilla SAP real)."""
+    tope = min(ws_origen.max_row, max_filas) if max_filas else ws_origen.max_row
+    for fila in ws_origen.iter_rows(min_row=1, max_row=tope):
+        for celda_origen in fila:
+            celda_destino = ws_destino.cell(row=celda_origen.row, column=celda_origen.column)
+            celda_destino.value = celda_origen.value
+            if celda_origen.has_style:
+                celda_destino.font = copy.copy(celda_origen.font)
+                celda_destino.fill = copy.copy(celda_origen.fill)
+                celda_destino.border = copy.copy(celda_origen.border)
+                celda_destino.alignment = copy.copy(celda_origen.alignment)
+                celda_destino.number_format = celda_origen.number_format
+
+    for letra, dim in ws_origen.column_dimensions.items():
+        ws_destino.column_dimensions[letra].width = dim.width
+
+    for rango in ws_origen.merged_cells.ranges:
+        ws_destino.merge_cells(str(rango))
 
 
 def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
