@@ -52,7 +52,10 @@ queda sin definir en esas plantillas y todo sale de config/salida_sap/zrp{1,3}.j
 ahí se evidenció que Repuestos repite cada centro una vez por Canal distribución
 (20 y 30) — plantilla config "canales_distribucion": ["20","30"] activa esa
 expansión adicional, a diferencia de Modelos/Maquinaria donde el canal es un
-único valor constante.
+único valor constante. Cuando el canal depende de la filial de la fila (ej.
+Repuestos VF00 = 10/20/30, el resto = 20/30), se usa
+"canales_distribucion_por_filial": {"VF00": [...], "_default": [...]} en vez
+de la lista fija.
 """
 
 import json
@@ -103,6 +106,7 @@ TIPO_MATERIAL_A_CONFIG = {
     "ZMAQ": "zmaq.json",
     "ZCAM": "zcam.json",
     "ZRP1": "zrp1.json",
+    "ZRP2": "zrp2.json",
     "ZRP3": "zrp3.json",
 }
 
@@ -272,8 +276,14 @@ def aplicar_plantilla_sap(
 
         numeros_asignados[str(material_idx)] = numero_sap
 
-        canales = plantilla.get("canales_distribucion")
+        canales_fijos = plantilla.get("canales_distribucion")
+        canales_por_filial = plantilla.get("canales_distribucion_por_filial")
         for _, row in grupo.iterrows():
+            if canales_por_filial:
+                filial_fila = str(row.get("FILIAL CODIGO", "")).strip()
+                canales = canales_por_filial.get(filial_fila, canales_por_filial.get("_default"))
+            else:
+                canales = canales_fijos
             if canales:
                 # Ej. Repuestos: cada centro se repite una vez por canal (20 y
                 # 30), evidenciado en docs.../campos_repuestos_zrp{1,3}.xlsx.
@@ -447,10 +457,17 @@ def _calcular_campos_pendientes(bloque: dict, plantilla: dict) -> Dict[str, str]
             continue
         pendientes[campo] = nota
 
-    for campo in plantilla.get("pendientes_extra", []):
+    pendientes_extra = plantilla.get("pendientes_extra", [])
+    # Puede ser una lista simple (mensaje genérico) o un dict {campo: nota}
+    # cuando el motivo puntual de esa plantilla vale la pena explicarlo.
+    if isinstance(pendientes_extra, dict):
+        items_extra = pendientes_extra.items()
+    else:
+        items_extra = [(campo, "Obligatorio sin regla confirmada (no evidenciado en un ejemplo real de esta filial).") for campo in pendientes_extra]
+    for campo, nota in items_extra:
         if campo in resueltos_por_plantilla:
             continue
-        pendientes.setdefault(campo, "Obligatorio sin regla confirmada (no evidenciado en un ejemplo real de esta filial).")
+        pendientes.setdefault(campo, nota)
 
     return pendientes
 

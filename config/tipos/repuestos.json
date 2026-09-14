@@ -3,29 +3,129 @@
   "nombre": "Repuestos",
   "descripcion": "Ampliación de repuestos a los centros SAP correspondientes según fabricante.",
 
-  "_nota": "Esquema de input real, tomado de data/reference/Repuestos/ZRP1_ZRP3.xlsx (hoja Input) — es DISTINTO al de Modelos (columnas propias, más SERIADO/NRO SERIE y ORIGINAL_ALTERNATIVO).",
+  "_nota": "Esquema de input real v2, tomado de data/reference/Repuestos/plantilla_repuestos.xlsx (hoja Input) — reemplaza al esquema anterior (ZRP1_ZRP3.xlsx, eliminado). Cambio principal: el input ahora es por NOMBRE (marca, fabricante, filial, grupo de artículo, original/alternativo) en vez de por código; 'traduccion_nombres' abajo traduce cada nombre a su código antes de que el resto del motor procese la fila (que sigue trabajando con códigos, sin cambios). SERIADO/NRO SERIE del esquema viejo se reemplazan por 'Serie o Lote?' (N/A/Con Lote/Con Serie), que ahora define ZRP1/ZRP2/ZRP3 (antes solo existían ZRP1/ZRP3).",
 
-  "input_sheet": "INPUT",
-  "columna_filial": "FILIAL",
+  "input_sheet": "Input",
   "input_columns": [
-    "FILIAL",
-    "UNIDAD MEDIDA",
-    "TEXTO BREVE",
-    "GRUPO ARTICULO",
-    "NOMBRE JERARQUIA",
-    "CODIGO JERARQUIA",
+    "Filial",
+    "Unidad Medida (UM)",
+    "Equivalencia L/UN (Solo si UM = L)",
+    "Serie o Lote?",
+    "Texto breve (máximo 40 caracteres)",
+    "Grupo de Artículo",
+    "Texto jerarquía",
     "NPF",
     "ORIGINAL_ALTERNATIVO",
-    "CODIGO ORIGINAL_ALTERNATIVO",
     "NOMBRE MARCA",
-    "CODIGO MARCA",
     "NOMBRE FABRICANTE",
-    "CODIGO FABRICANTE",
-    "SERIADO",
-    "NRO SERIE"
+    "Costo Unitario (Referencia)",
+    "Moneda"
   ],
 
-  "text_columns": ["CODIGO JERARQUIA", "CODIGO MARCA", "NPF", "CODIGO ORIGINAL_ALTERNATIVO", "NRO SERIE"],
+  "text_columns": ["NPF"],
+
+  "renombrar_columnas": {
+    "Texto breve (máximo 40 caracteres)": "TEXTO BREVE"
+  },
+  "_renombrar_columnas_nota": "Solo cosmético: el resto del motor (correlativo, avisos) y app.py ya conocen esta columna como 'TEXTO BREVE' (igual que en Modelos).",
+
+  "_traduccion_nombres_nota": "Cada regla traduce una columna 'por nombre' del input a la columna de código que el resto del motor ya sabe usar (mismo nombre que antes: FILIAL CODIGO, CODIGO MARCA, CODIGO FABRICANTE, GRUPO ARTICULO, CODIGO ORIGINAL_ALTERNATIVO). Si el nombre no matchea ninguna entrada del diccionario/mapa (sin mayúsculas ni espacios extra), la fila se excluye con aviso — nunca se inventa un código. 'Serie o Lote?' no traduce a un código SAP; genera 'TIPO MATERIAL REPUESTO' (ZRP1/ZRP2/ZRP3), que app.py usa para separar el archivo en hasta 3 partes antes de llamar a salida_sap.",
+  "traduccion_nombres": [
+    {
+      "tipo": "mapa",
+      "columna_origen": "Filial",
+      "columna_destino": "FILIAL CODIGO",
+      "mapa": {
+        "Maco Tattersall": "VA00",
+        "Tattersall Maquinarias": "VC00",
+        "Tattersall Multimaq": "VD00",
+        "Tattersall Automotriz": "VF00",
+        "Tattersall Industrial y Maquinarias": "VC00"
+      },
+      "_nota": "Sale de data/reference/Repuestos/plantilla_repuestos.xlsx, hoja 'Diccionario Filiales' (columna 'Sociedad/es' -> 'Nombre Sociedad'), pero a mano y no leído directo de la hoja porque esa hoja trae 2 filas con MÁS de una sociedad ('VE00, VC00' y 'VF00, VA00') que no son un simple nombre->código. Seba confirmó una sola de esas dos por ahora: 'Tattersall Industrial y Maquinarias' (VE00,VC00) se resuelve como VC00 (VE00 ya no se usa aparte, se amplía todo a VC00). La otra ('Tattersall Automotriz y Maco Tattersall', VF00+VA00) todavía no está confirmada y queda fuera a propósito -- por ahora nadie la va a tipear; si alguien la usa, la fila se excluye con aviso 'no reconocido', que es la señal correcta hasta que se confirme cómo repartirla."
+    },
+    {
+      "tipo": "mapa",
+      "columna_origen": "Serie o Lote?",
+      "columna_destino": "TIPO MATERIAL REPUESTO",
+      "mapa": {
+        "N/A": "ZRP1",
+        "Con Lote": "ZRP2",
+        "Con Serie": "ZRP3"
+      },
+      "_nota": "Valores exactos de la lista desplegable de la hoja Input (data validation) y de la hoja 'Diccionario Tipo Material' (ZRP1=N/A, ZRP2=Con Lote, ZRP3=Con Serie)."
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE MARCA",
+      "columna_destino": "CODIGO MARCA",
+      "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "diccionario_sheet": "Diccionario Marcas",
+      "col_nombre": "Descripción Marca",
+      "col_codigo": "Marca"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE FABRICANTE",
+      "columna_destino": "CODIGO FABRICANTE",
+      "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "diccionario_sheet": "Diccionario Fabricantes",
+      "col_nombre": "Fabricante externo",
+      "col_codigo": "Fabricante",
+      "_nota": "El input trae el código corto ('Fabricante externo', ej. DFAC/FAW/INT), no el nombre largo del proveedor ni el código interno F00xx -- se traduce a este último."
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "Grupo de Artículo",
+      "columna_destino": "GRUPO ARTICULO",
+      "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "diccionario_sheet": "Grupo de Articulos",
+      "col_nombre": "Descripción",
+      "col_codigo": "Grupo Artículo"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "ORIGINAL_ALTERNATIVO",
+      "columna_destino": "CODIGO ORIGINAL_ALTERNATIVO",
+      "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "diccionario_sheet": "Diccionario Original-Alternativ",
+      "col_nombre": "Descripción",
+      "col_codigo": "Clave"
+    }
+  ],
+
+  "_jerarquia_nota": "⚠️ PENDIENTE a propósito: 'Texto jerarquía' del input NO se traduce todavía. La hoja 'Diccionario Jerarquías' tiene 1607 nombres hoja (ej. 'CABLES') repetidos hasta 14 veces, uno por cada rama marca+negocio (ej. 'FAW REPUESTO' auto vs 'FAW TRUCK REPUESTOS' camión) -- resolverlo bien necesita cruzar marca+filial para elegir la rama y ahí buscar el nombre, y Seba dijo que el ejemplo que ya está en el repo puede tener casos mal puestos (ej. Lifan) y que va a subir uno más completo. Hasta que llegue ese archivo, 'Jerarquía productos' queda vacío en la salida SAP (ver notas_pendientes de zrp1/zrp2/zrp3.json).",
+
+  "validaciones": {
+    "_nota": "Filas que no pasan alguna de estas reglas se excluyen (con aviso), nunca se corrigen solas.",
+    "campos_obligatorios": [
+      "Filial",
+      "Unidad Medida (UM)",
+      "Serie o Lote?",
+      "TEXTO BREVE",
+      "Grupo de Artículo",
+      "Texto jerarquía",
+      "NPF",
+      "ORIGINAL_ALTERNATIVO",
+      "NOMBRE MARCA",
+      "NOMBRE FABRICANTE"
+    ],
+    "_campos_obligatorios_nota": "'Equivalencia L/UN', 'Costo Unitario' y 'Moneda' NO están acá: en el ejemplo real que dejó Seba vienen vacíos en la mayoría de las filas, así que son opcionales (Equivalencia solo se exige si UM='L', ver regla siguiente).",
+    "equivalencia_requerida_si": {
+      "columna": "Unidad Medida (UM)",
+      "valor": "L",
+      "columna_requerida": "Equivalencia L/UN (Solo si UM = L)"
+    },
+    "texto_breve_columna": "TEXTO BREVE",
+    "texto_breve_max_len": 40,
+    "_texto_breve_nota": "Además del límite de 40 caracteres, el valor se pasa a MAYÚSCULAS siempre (pedido explícito de Seba).",
+    "costo_moneda": {
+      "columna_costo": "Costo Unitario (Referencia)",
+      "columna_moneda": "Moneda",
+      "reglas": { "CLP": "int", "USD": "float" },
+      "_nota": "Solo se valida cuando AMBOS campos vienen con dato (los dos son opcionales). CLP tiene que ser un número entero (sin decimales); USD tiene que traer decimales."
+    }
+  },
 
   "reference_file": "data/reference/Repuestos/Cebe_Repuestos.xlsx",
   "reference_sheet": null,
@@ -53,11 +153,16 @@
     "valor_bloqueado": 0
   },
 
-  "diccionario_referencia": {
-    "reference_file": "data/reference/Diccionario_marca_jerarquia.xlsx",
-    "sheet": "Diccionario",
-    "titulo_hoja": "DICCIONARIO_MARCA_JERARQUIA"
-  },
+  "_diccionario_referencia_nota": "El cliente pidió que el input y los diccionarios vengan juntos en un solo archivo, con cada diccionario en su propia hoja (como plantilla_repuestos.xlsx) -- por eso 'diccionarios_referencia' es una LISTA (a diferencia de Modelos, que sigue con un solo diccionario combinado). generar_plantilla_vacia() los adjunta todos como hojas extra de la plantilla descargable.",
+  "diccionarios_referencia": [
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Jerarquías", "titulo_hoja": "Diccionario Jerarquías" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Tipo Material", "titulo_hoja": "Diccionario Tipo Material" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Grupo de Articulos", "titulo_hoja": "Grupo de Articulos" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Filiales", "titulo_hoja": "Diccionario Filiales" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Fabricantes", "titulo_hoja": "Diccionario Fabricantes" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Marcas", "titulo_hoja": "Diccionario Marcas" },
+    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Original-Alternativ", "titulo_hoja": "Diccionario Original-Alternativ" }
+  ],
 
   "correlativo": {
     "enabled": true,

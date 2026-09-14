@@ -2,6 +2,7 @@ import io
 import uuid
 from datetime import datetime
 
+import openpyxl
 import pandas as pd
 from flask import Flask, render_template, request, send_file, flash, redirect, url_for, abort
 
@@ -58,19 +59,36 @@ def diccionario(tipo_id):
         return redirect(url_for("index"))
 
     diccionario_cfg = cfg.get("diccionario_referencia")
-    if not diccionario_cfg:
+    diccionarios_cfg = cfg.get("diccionarios_referencia")
+    if not diccionario_cfg and not diccionarios_cfg:
         flash(f"El tipo '{tipo_id}' no tiene un diccionario de referencia configurado.", "error")
         return redirect(url_for("index"))
 
-    origen_path = engine.BASE_DIR / diccionario_cfg["reference_file"]
-    if not origen_path.exists():
-        flash(f"Falta el archivo de diccionario: {origen_path}", "error")
-        return redirect(url_for("index"))
+    if diccionario_cfg:
+        origen_path = engine.BASE_DIR / diccionario_cfg["reference_file"]
+        if not origen_path.exists():
+            flash(f"Falta el archivo de diccionario: {origen_path}", "error")
+            return redirect(url_for("index"))
+        return send_file(
+            origen_path,
+            as_attachment=True,
+            download_name=origen_path.name,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
 
+    # Varios diccionarios (Repuestos): se bundlean en un solo Excel, una hoja
+    # por diccionario, igual que se hace dentro de la plantilla descargable.
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for d_cfg in diccionarios_cfg:
+        engine._agregar_hoja_diccionario(wb, d_cfg)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
     return send_file(
-        origen_path,
+        buffer,
         as_attachment=True,
-        download_name=origen_path.name,
+        download_name=f"diccionarios_{tipo_id}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
@@ -116,25 +134,25 @@ def procesar():
             try:
                 if tipo_id == "repuestos":
                     # El tipo de material SAP no depende de la filial acá, sino
-                    # de si el repuesto viene marcado SERIADO='X' en el input
-                    # (puede haber una mezcla de ambos en el mismo archivo).
-                    es_seriado = resultado_df["SERIADO"].astype(str).str.strip().str.upper() == "X"
-                    materiales_seriados = resultado_df[es_seriado].drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
-                    if materiales_seriados:
-                        avisos.append(
-                            f"🔵 SERIADO='X' -> se generan como ZRP3 (seriados), {len(materiales_seriados)} material(es): "
-                            + ", ".join(materiales_seriados)
-                        )
+                    # de "Serie o Lote?" en el input (N/A->ZRP1, Con Lote->ZRP2,
+                    # Con Serie->ZRP3, ya traducido a "TIPO MATERIAL REPUESTO"
+                    # por engine.py) — puede haber una mezcla de los 3 en el
+                    # mismo archivo.
                     partes_sap = []
                     pendientes = {}
                     obligatorios_vacios = []
                     marcas_sin_categoria = set()
                     marcas_sin_grupo_compras = set()
                     tipos_material_usados = []
-                    for tipo_material_sap, mask in [("ZRP3", es_seriado), ("ZRP1", ~es_seriado)]:
-                        subset = resultado_df[mask]
+                    for tipo_material_sap in ("ZRP1", "ZRP2", "ZRP3"):
+                        subset = resultado_df[resultado_df["TIPO MATERIAL REPUESTO"] == tipo_material_sap]
                         if subset.empty:
                             continue
+                        if tipo_material_sap != "ZRP1":
+                            materiales = subset.drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
+                            avisos.append(
+                                f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
+                            )
                         df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
                         partes_sap.append(df_parte)
                         pendientes.update(meta_parte.get("campos_pendientes", {}))

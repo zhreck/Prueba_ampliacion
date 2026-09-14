@@ -41,7 +41,7 @@ def listar_tipos() -> list[dict]:
             "id": cfg["id"],
             "nombre": cfg["nombre"],
             "descripcion": cfg.get("descripcion", ""),
-            "tiene_diccionario": bool(cfg.get("diccionario_referencia")),
+            "tiene_diccionario": bool(cfg.get("diccionario_referencia") or cfg.get("diccionarios_referencia")),
         })
     return tipos
 
@@ -80,7 +80,28 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
     for col_idx, nombre_col in enumerate(columnas, start=1):
         ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = max(14, len(nombre_col) + 2)
 
+    # A diferencia de Modelos (que ya tiene un botón de descarga aparte para
+    # su diccionario), el cliente pidió que en Repuestos el input y los
+    # diccionarios vengan juntos en un solo archivo, cada uno en su propia
+    # hoja (ver "diccionarios_referencia" en config/tipos/repuestos.json).
+    for diccionario_cfg in cfg.get("diccionarios_referencia", []):
+        _agregar_hoja_diccionario(wb, diccionario_cfg)
+
     return wb
+
+
+def _agregar_hoja_diccionario(wb: "openpyxl.Workbook", diccionario_cfg: dict) -> None:
+    """Copia tal cual una hoja de referencia (ej. un diccionario de códigos)
+    como hoja extra de la plantilla descargable."""
+    origen_path = BASE_DIR / diccionario_cfg["reference_file"]
+    if not origen_path.exists():
+        return
+    wb_origen = openpyxl.load_workbook(origen_path, data_only=True)
+    ws_origen = wb_origen[diccionario_cfg["sheet"]]
+
+    ws_destino = wb.create_sheet(title=diccionario_cfg.get("titulo_hoja", "DICCIONARIO")[:31])
+    for fila in ws_origen.iter_rows(values_only=True):
+        ws_destino.append(fila)
 
 
 def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
@@ -91,10 +112,11 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     
     try:
         df = pd.read_excel(
-            file_storage, 
-            sheet_name=cfg["input_sheet"], 
+            file_storage,
+            sheet_name=cfg["input_sheet"],
             dtype=dtype_dict,
-            converters=converters_dict
+            converters=converters_dict,
+            keep_default_na=False,
         )
     except ValueError as e:
         raise InputInvalidoError(
@@ -114,11 +136,36 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     # Solo nos quedamos con las columnas definidas por la plantilla, en su orden,
     # y descartamos cualquier fila que venga completamente vacía en la key de match.
     df = df[columnas_esperadas].copy()
+    df = df.reset_index(drop=True)
+
+    # Algunos tipos tienen columnas de input con nombres largos/propios (ej.
+    # Repuestos: "Texto breve (máximo 40 caracteres)") que el resto del motor
+    # y salida_sap.py ya conocen por un nombre corto interno (ej. "TEXTO
+    # BREVE", igual que en Modelos) — este rename es solo cosmético, pasa
+    # antes de traducir nombres a códigos.
+    renombrar = cfg.get("renombrar_columnas", {})
+    df = df.rename(columns=renombrar)
+
+    # Algunos tipos (Repuestos) reciben el input por NOMBRE (marca, fabricante,
+    # filial...) y necesitan traducirlo a código antes de que el resto del
+    # motor pueda hacer matching contra la tabla de referencia (que sí es por
+    # código). Filas cuyo nombre no existe en ningún diccionario se excluyen
+    # acá mismo (nunca se inventa un código a partir de un nombre parecido).
+    avisos_traduccion: list[str] = []
+    for regla in cfg.get("traduccion_nombres", []):
+        df, avisos_regla = _traducir_columna(df, regla)
+        avisos_traduccion.extend(avisos_regla)
+
+    avisos_validacion: list[str] = []
+    validaciones = cfg.get("validaciones")
+    if validaciones:
+        df, avisos_validacion = _validar_filas(df, validaciones)
 
     # Cada tipo puede llamar distinto a su columna de filial (Modelos: "FILIAL
-    # CODIGO", Repuestos: "FILIAL"...). Hacia adentro del sistema siempre se
-    # trabaja con "FILIAL CODIGO", en mayúsculas (Vc00, vC00, VC00... se tratan
-    # igual), para no tener que enseñarle "FILIAL" a app.py/salida_sap.py.
+    # CODIGO", Repuestos: ya llega como "FILIAL CODIGO" después de traducir el
+    # nombre de la sociedad...). Hacia adentro del sistema siempre se trabaja
+    # con "FILIAL CODIGO", en mayúsculas (Vc00, vC00, VC00... se tratan
+    # igual), para no tener que enseñarle el nombre real a app.py/salida_sap.py.
     columna_filial = cfg.get("columna_filial", "FILIAL CODIGO")
     if columna_filial in df.columns:
         df[columna_filial] = df[columna_filial].astype(str).str.strip().str.upper()
@@ -129,12 +176,147 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     for col in text_columns:
         if col in df.columns:
             df[col] = df[col].astype(str)
-    
+
+    if df.empty:
+        raise InputInvalidoError(
+            "Ninguna fila del Excel pasó las validaciones. " + " ".join(avisos_traduccion + avisos_validacion)
+        )
+
     df = df.dropna(subset=[cfg["key_input"]])
     if df.empty:
         raise InputInvalidoError("El Excel no tiene ninguna fila de datos para procesar.")
-    
+
+    df.attrs["avisos_lectura"] = avisos_traduccion + avisos_validacion
     return df
+
+
+def _traducir_columna(df: pd.DataFrame, regla: dict) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Traduce una columna del input "por nombre" a la columna de código que el
+    resto del motor espera, según una regla de config/tipos/*.json
+    ("traduccion_nombres"). Dos tipos de regla:
+    - "mapa": diccionario chico definido a mano en el JSON (ej. Filial -> cod.
+      sociedad, con una excepción de negocio como VE00 -> VC00; o Serie o
+      Lote? -> tipo de material ZRP1/ZRP2/ZRP3).
+    - "diccionario": lee nombre->código desde una hoja de Excel (Marca,
+      Fabricante, Grupo de Artículo, Original/Alternativo).
+    En ambos casos, si el valor de la fila no matchea ninguna entrada
+    (comparando sin mayúsculas/minúsculas ni espacios extra), la fila se
+    excluye con un aviso — nunca se inventa ni se aproxima un código.
+    """
+    col_origen = regla["columna_origen"]
+    col_destino = regla["columna_destino"]
+
+    if regla["tipo"] == "mapa":
+        mapa = regla["mapa"]
+    elif regla["tipo"] == "diccionario":
+        origen_path = BASE_DIR / regla["diccionario_file"]
+        dicc_df = pd.read_excel(origen_path, sheet_name=regla["diccionario_sheet"], dtype=str, keep_default_na=False)
+        dicc_df = dicc_df.dropna(subset=[regla["col_nombre"], regla["col_codigo"]])
+        mapa = dict(zip(dicc_df[regla["col_nombre"]], dicc_df[regla["col_codigo"]]))
+    else:
+        raise InputInvalidoError(f"Tipo de traducción desconocido: {regla['tipo']}")
+
+    mapa_normalizado = {str(k).strip().upper(): v for k, v in mapa.items()}
+
+    if col_origen not in df.columns:
+        return df, []
+
+    valores_normalizados = df[col_origen].astype(str).str.strip().str.upper()
+    codigos = valores_normalizados.map(mapa_normalizado)
+
+    avisos = []
+    sin_match = codigos.isna() & df[col_origen].notna() & (df[col_origen].astype(str).str.strip() != "")
+    if sin_match.any():
+        valores_no_reconocidos = sorted(df.loc[sin_match, col_origen].astype(str).unique())
+        avisos.append(
+            f"'{col_origen}' con valor(es) no reconocido(s) en el diccionario, fila(s) omitida(s): "
+            + ", ".join(valores_no_reconocidos)
+        )
+
+    df[col_destino] = codigos
+    df = df[~sin_match].copy()
+    return df, avisos
+
+
+def _validar_filas(df: pd.DataFrame, cfg_validaciones: dict) -> tuple[pd.DataFrame, list[str]]:
+    """
+    Validaciones genéricas de negocio sobre el input ya traducido, config-driven
+    (ver "validaciones" en config/tipos/*.json). Nunca corrige el dato: si una
+    fila no pasa, se excluye y se reporta en el aviso — el usuario tiene que
+    arreglar el Excel de origen.
+    """
+    avisos = []
+    filas_validas = pd.Series(True, index=df.index)
+
+    for col in cfg_validaciones.get("campos_obligatorios", []):
+        if col not in df.columns:
+            continue
+        vacio = df[col].isna() | (df[col].astype(str).str.strip() == "")
+        if vacio.any():
+            avisos.append(f"'{col}' vacío en {vacio.sum()} fila(s) — fila(s) omitida(s) (campo obligatorio).")
+            filas_validas &= ~vacio
+
+    eq_req = cfg_validaciones.get("equivalencia_requerida_si")
+    if eq_req and eq_req["columna"] in df.columns and eq_req["columna_requerida"] in df.columns:
+        aplica = df[eq_req["columna"]].astype(str).str.strip().str.upper() == eq_req["valor"].upper()
+        falta = aplica & (df[eq_req["columna_requerida"]].isna() | (df[eq_req["columna_requerida"]].astype(str).str.strip() == ""))
+        if falta.any():
+            avisos.append(
+                f"'{eq_req['columna_requerida']}' vacío en {falta.sum()} fila(s) con "
+                f"{eq_req['columna']}='{eq_req['valor']}' — fila(s) omitida(s)."
+            )
+            filas_validas &= ~falta
+
+    col_texto = cfg_validaciones.get("texto_breve_columna")
+    max_len = cfg_validaciones.get("texto_breve_max_len")
+    if col_texto and max_len and col_texto in df.columns:
+        largo = df[col_texto].astype(str).str.len()
+        muy_largo = largo > max_len
+        if muy_largo.any():
+            avisos.append(
+                f"'{col_texto}' con más de {max_len} caracteres en {muy_largo.sum()} fila(s) — fila(s) omitida(s)."
+            )
+            filas_validas &= ~muy_largo
+
+    costo_moneda = cfg_validaciones.get("costo_moneda")
+    if costo_moneda:
+        col_costo = costo_moneda["columna_costo"]
+        col_moneda = costo_moneda["columna_moneda"]
+        reglas = costo_moneda["reglas"]
+        if col_costo in df.columns and col_moneda in df.columns:
+            tiene_ambos = (
+                df[col_costo].notna() & (df[col_costo].astype(str).str.strip() != "")
+                & df[col_moneda].notna() & (df[col_moneda].astype(str).str.strip() != "")
+            )
+            malos = pd.Series(False, index=df.index)
+            for i in df.index[tiene_ambos]:
+                moneda = str(df.at[i, col_moneda]).strip().upper()
+                regla = reglas.get(moneda)
+                if not regla:
+                    continue
+                crudo = str(df.at[i, col_costo]).strip()
+                try:
+                    valor = float(crudo)
+                except ValueError:
+                    malos.at[i] = True
+                    continue
+                es_entero = valor == int(valor) and "." not in crudo and "," not in crudo
+                if regla == "int" and not es_entero:
+                    malos.at[i] = True
+                elif regla == "float" and es_entero:
+                    malos.at[i] = True
+            if malos.any():
+                avisos.append(
+                    f"'{col_costo}'/'{col_moneda}' inconsistentes (CLP debe ser entero, USD debe tener decimales) "
+                    f"en {malos.sum()} fila(s) — fila(s) omitida(s)."
+                )
+                filas_validas &= ~malos
+
+    if col_texto and col_texto in df.columns:
+        df[col_texto] = df[col_texto].astype(str).str.upper()
+
+    return df[filas_validas].copy(), avisos
 
 
 def _cargar_referencia(ref_file: str, ref_sheet, text_columns: list[str] | None = None) -> pd.DataFrame:
@@ -216,7 +398,7 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     corr_cfg = cfg.get("correlativo", {"enabled": False})
 
     filas_salida = []
-    avisos = []
+    avisos = list(input_df.attrs.get("avisos_lectura", []))
 
     def _filtrar_por_disponibilidad(matches_df, fabricante):
         """Saca del match los centros que la matriz de disponibilidad marca
