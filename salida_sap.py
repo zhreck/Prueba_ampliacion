@@ -135,10 +135,12 @@ def cargar_marcas() -> dict:
         return json.load(fh).get("marcas", {})
 
 
-def cargar_grupo_compras() -> dict:
-    """Carga config/grupo_compras.json: {filial: {cod_marca: grupo} | {'_default': grupo}}."""
+def cargar_grupo_compras(tabla: str) -> dict:
+    """Carga la tabla `tabla` ('unidades' o 'repuestos') de
+    config/grupo_compras.json: {filial: {cod_marca: grupo} | {'_default': grupo}}."""
     with open(GRUPO_COMPRAS_PATH, encoding="utf-8") as fh:
-        return json.load(fh).get("filiales", {})
+        datos = json.load(fh).get(tabla, {})
+    return {k: v for k, v in datos.items() if not k.startswith("_")}
 
 
 def cargar_confirmacion_sap() -> dict:
@@ -409,22 +411,22 @@ def _resolver_categoria_valoracion(df_sap: pd.DataFrame, plantilla: dict, primer
 def _resolver_grupo_compras(df_sap: pd.DataFrame, plantilla: dict, primeras: Dict[str, int]) -> List[str]:
     """
     Llena "Grupo de compras" según filial ('Org. Ventas') + marca ('Grupo
-    materiales 1'), usando config/grupo_compras.json — tabla que Seba pasó en
-    arreglos_notas.txt (grupo de compras de Unidades, no de Repuestos: no se
-    usa para ZRP1/ZRP3, que ya tienen su propio valor confirmado por ejemplo
-    real). Solo aplica si la plantilla tiene "grupo_de_compras_dinamico": true.
+    materiales 1'), usando la tabla ('unidades' o 'repuestos') que indique
+    "grupo_de_compras_dinamico" en la plantilla — ver config/grupo_compras.json.
 
     Si la filial no está en la tabla, no se toca el campo (sigue el
     comportamiento anterior: vacío/pendiente). Si la filial tiene una sola
-    opción fija (clave "_default", ej. VF00) se usa esa sin mirar la marca.
-    Si la filial tiene varias opciones por marca (ej. VA00/VC00) y la marca de
-    la fila no está en la tabla, el campo queda vacío y se reporta en la
-    lista que devuelve esta función.
+    opción fija (clave "_default", ej. VF00 en Unidades, o TODAS las
+    filiales en Repuestos) se usa esa sin mirar la marca. Si la filial tiene
+    varias opciones por marca (ej. VA00/VC00 en Unidades) y la marca de la
+    fila no está en la tabla, el campo queda vacío y se reporta en la lista
+    que devuelve esta función.
     """
-    if not plantilla.get("grupo_de_compras_dinamico") or df_sap.empty:
+    nombre_tabla = plantilla.get("grupo_de_compras_dinamico")
+    if not nombre_tabla or df_sap.empty:
         return []
 
-    tabla = cargar_grupo_compras()
+    tabla = cargar_grupo_compras(nombre_tabla)
     marcas = cargar_marcas()
 
     idx_grupo = primeras[COL_GRUPO_COMPRAS]

@@ -2,6 +2,8 @@
   "id": "modelos",
   "nombre": "Modelos",
   "descripcion": "Ampliación de vehículos/modelos nuevos a los centros SAP correspondientes según fabricante.",
+  "_oculto_nota": "Ocultado temporalmente a pedido de Seba (arreglos_notas.txt) mientras se prueba Repuestos -- no aparece en el selector de la web. Para reactivarlo, borrar esta línea y la de 'oculto' abajo.",
+  "oculto": true,
 
   "input_sheet": "INPUT",
   "input_columns": [

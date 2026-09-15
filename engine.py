@@ -40,6 +40,8 @@ def listar_tipos() -> list[dict]:
     for f in sorted(TIPOS_DIR.glob("*.json")):
         with open(f, encoding="utf-8") as fh:
             cfg = json.load(fh)
+        if cfg.get("oculto"):
+            continue
         tipos.append({
             "id": cfg["id"],
             "nombre": cfg["nombre"],

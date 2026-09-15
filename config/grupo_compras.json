@@ -1,7 +1,9 @@
 {
-  "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la tabla de Grupo de compras de UNIDADES (Modelos: ZVHE/ZCAM/ZMAQ). No aplica a Repuestos (ZRP1/ZRP3), que ya tienen su propio 'Grupo de compras' confirmado por ejemplo real (Q02/M02) y no usan esta tabla.",
-  "_nota": "Por filial: o una sola opción fija ('_default', ej. VF00, donde 'TAU Unds' no distingue marca) o varias opciones según la MARCA de la fila (columna 'Grupo materiales 1'). 'MTT Unds Usadas' (M28, VA00) quedó fuera: es para unidades USADAS y esta ampliación ya filtra a 'Vta. Unidades Nuevas' (ver reference_filter en config/tipos/modelos.json), así que ese grupo no debería ser alcanzable acá.",
-  "filiales": {
+  "_nota": "Dos tablas separadas porque Modelos y Repuestos usan Grupo de compras de forma distinta, y comparten los mismos códigos de filial (VA00, VC00...) con reglas distintas -- no se pueden mezclar en un solo diccionario. Cada plantilla SAP indica cuál usar con 'grupo_de_compras_dinamico': '<nombre_tabla>' (ver salida_sap._resolver_grupo_compras).",
+
+  "unidades": {
+    "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la de UNIDADES (Modelos: ZVHE/ZCAM/ZMAQ).",
+    "_uso_nota": "Por filial: o una sola opción fija ('_default', ej. VF00, donde 'TAU Unds' no distingue marca) o varias opciones según la MARCA de la fila (columna 'Grupo materiales 1'). 'MTT Unds Usadas' (M28, VA00) quedó fuera: es para unidades USADAS y esta ampliación ya filtra a 'Vta. Unidades Nuevas' (ver reference_filter en config/tipos/modelos.json), así que ese grupo no debería ser alcanzable acá.",
     "VA00": {
       "080": "M03",
       "110": "M04",
@@ -21,5 +23,15 @@
     "VF00": {
       "_default": "T03"
     }
+  },
+
+  "repuestos": {
+    "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la de REPUESTOS (ZRP1/ZRP2/ZRP3): M02 MTT Rptos IMP (VA00), Q02 TTM Rptos IMP (VC00/VD00/VE00), T02 TAU Rptos IMP (VF00).",
+    "_uso_nota": "A diferencia de Unidades, en Repuestos el grupo de compras depende SOLO de la filial, no de la marca -- por eso todas las entradas son '_default'. Reemplaza al valor fijo único que traían zrp1/zrp2/zrp3.json antes (evidenciado solo para una filial cada uno: 'Q02' solo se probó con VC00, 'M02' solo con VA00 — quedaba mal para el resto de filiales).",
+    "VA00": { "_default": "M02" },
+    "VC00": { "_default": "Q02" },
+    "VD00": { "_default": "Q02" },
+    "VE00": { "_default": "Q02" },
+    "VF00": { "_default": "T02" }
   }
 }

@@ -7,7 +7,7 @@
   "categoria_valoracion": {
     "grupo": "ZVEH"
   },
-  "grupo_de_compras_dinamico": true,
+  "grupo_de_compras_dinamico": "unidades",
   "canales_distribucion": [
     "20",
     "30"

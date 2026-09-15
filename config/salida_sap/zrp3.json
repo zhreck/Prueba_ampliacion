@@ -65,14 +65,14 @@
     "Grupo de transporte": "0001",
     "Grupo de carga": "0001",
     "verificación de disponibilidad": "02",
-    "Grupo de compras": "M02",
     "Perfil Pieza de Fabricante": "ZMP1",
     "Perfil Número de Serie": "Z001",
     "Condición Almacenaje": "RP",
     "Control de precios": "V",
     "Tipo de MRP": "ND",
     "Clasificación Fiscal para el material ZMWS": "0",
-    "Tipo de número del Numero de artículo Europeo": "Z1"
+    "Tipo de número del Numero de artículo Europeo": "Z1",
+    "Contabilizar en stock en insp.calidad": "X"
   },
   "_defaults_confirmados_extra_nota": "Extraídos del único ejemplo real disponible (VA00, 2 materiales). 'Perfil Número de Serie'='Z001' es la diferencia clave con ZRP1 (queda vacío ahí) — es lo que hace que el material sea tratado como seriado en SAP. 'Almacén' queda vacío a propósito (en el ejemplo real de ZRP3 viene vacío, a diferencia de ZRP1 donde es '1000'). 'Grupo de compras'='M02' está evidenciado solo para VA00 — podría no generalizar a otras filiales (falta confirmar); distinto del 'Q02' de ZRP1 porque ese ejemplo era de otra filial (VC00), así que la diferencia podría deberse a la filial y no al tipo de material.",
   "notas_pendientes": [
@@ -80,6 +80,9 @@
     "'Serie o Lote?'='Con Serie' en el input determina que ese material se genera como ZRP3 (ver app.py, split por 'TIPO MATERIAL REPUESTO' antes de llamar a esta función) — no es un campo de esta plantilla. El esquema viejo tenía un campo NRO SERIE aparte que ya no existe en el input nuevo.",
     "Comparte rango de correlativo con ZRP1/ZRP2 (mismo 'repuestos_material') a propósito — Seba confirmó que da lo mismo si dos materiales de distinto tipo comparten número.",
     "Categoría valoración: resuelta por MARCA (columna 'Grupo materiales 1', ya cargada desde CODIGO MARCA) y filial vía config/categoria_valoracion.json (grupos ZREP_CAMIONES/ZREP_MAQUINARIAS/ZREP_VEHICULOS, elegido según 'Org. Ventas' — confirmado por Seba: VA00=Camiones, VC00/VD00/VE00=Maquinarias, VF00=Vehículos/Motos). Se cambió de Fabricante a Marca como clave porque en Repuestos el Fabricante es quien fabrica la pieza (puede ser un tercero genérico) y no necesariamente la marca del vehículo/máquina al que corresponde (ver nota en config/categoria_valoracion.json). Dongfeng y Faw ya no son ambiguos: se resuelven distinto según la filial de cada fila. LIFAN (marca 140, motos) y LIFAN AUTO (marca 290, autos) son marcas separadas en el diccionario — Seba confirmó que el input real las distingue, así que cada una resuelve sola a su categoría (1700 motos / 1575 autos) sin necesitar una regla especial.",
-    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
-  ]
+    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002').",
+    "Grupo de compras: resuelto por FILIAL (no por marca, a diferencia de Modelos) vía config/grupo_compras.json (tabla 'repuestos', confirmada por Seba en arreglos_notas.txt) — VA00=M02, VC00/VD00/VE00=Q02, VF00=T02. Antes había un valor fijo único por plantilla (Q02 en ZRP1, M02 en ZRP3), evidenciado solo para la filial de ese ejemplo puntual (VC00/VA00) — quedaba mal para el resto.",
+    "'Contabilizar en stock en insp.calidad'='X' confirmado por Seba en arreglos_notas.txt."
+  ],
+  "grupo_de_compras_dinamico": "repuestos"
 }

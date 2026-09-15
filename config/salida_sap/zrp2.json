@@ -67,13 +67,13 @@
     "Grupo de transporte": "0001",
     "Grupo de carga": "0001",
     "verificación de disponibilidad": "02",
-    "Grupo de compras": "Q02",
     "Perfil Pieza de Fabricante": "ZMP1",
     "Condición Almacenaje": "RP",
     "Control de precios": "V",
     "Tipo de MRP": "ND",
     "Clasificación Fiscal para el material ZMWS": "0",
-    "Tipo de número del Numero de artículo Europeo": "Z1"
+    "Tipo de número del Numero de artículo Europeo": "Z1",
+    "Contabilizar en stock en insp.calidad": "X"
   },
   "_defaults_confirmados_extra_nota": "Copiado de zrp1.json a falta de evidencia propia — falta confirmar con Seba si ZRP2 (Con Lote) necesita algún flag distinto (ej. de vencimiento/lote) además del cambio de 'Tipo material'.",
   "notas_pendientes": [
@@ -81,6 +81,9 @@
     "Rango de material: CONFIRMADO (50000000-79999999), compartido con ZRP1/ZRP3.",
     "'Serie o Lote?'='Con Lote' en el input determina que ese material se genera como ZRP2 (ver app.py, split por 'TIPO MATERIAL REPUESTO' antes de llamar a esta función) — no es un campo de esta plantilla.",
     "Categoría valoración: resuelta por MARCA y filial vía config/categoria_valoracion.json, igual que ZRP1/ZRP3 (ver notas ahí).",
-    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
-  ]
+    "Jerarquía productos: RESUELTA. El input trae el camino completo ('Texto jerarquía'), que matchea exacto contra 'Texto Jerarquía' del diccionario -- config/tipos/repuestos.json (traduccion_nombres, tipo 'jerarquia') concatena Nivel1(5)+Nivel2(5)+Nivel3(8) con cero a la izquierda. Formato confirmado con el ejemplo real de ZMAQ (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002').",
+    "Grupo de compras: resuelto por FILIAL (no por marca, a diferencia de Modelos) vía config/grupo_compras.json (tabla 'repuestos', confirmada por Seba en arreglos_notas.txt) — VA00=M02, VC00/VD00/VE00=Q02, VF00=T02. Antes había un valor fijo único por plantilla (Q02 en ZRP1, M02 en ZRP3), evidenciado solo para la filial de ese ejemplo puntual (VC00/VA00) — quedaba mal para el resto.",
+    "'Contabilizar en stock en insp.calidad'='X' confirmado por Seba en arreglos_notas.txt."
+  ],
+  "grupo_de_compras_dinamico": "repuestos"
 }
