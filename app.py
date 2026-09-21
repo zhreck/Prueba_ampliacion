@@ -1,8 +1,10 @@
 import io
+import uuid
 from datetime import datetime
 
+import openpyxl
 import pandas as pd
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for, abort
 
 import engine
 import correlativo
@@ -11,11 +13,84 @@ import salida_sap
 app = Flask(__name__)
 app.secret_key = "cambiar-esta-clave-en-produccion"
 
+# Archivos generados listos para descargar, en memoria (proceso único de Flask
+# dev server — se pierden si se reinicia, es intencional: son de un solo uso).
+# Evita el patrón "flash + send_file directo": si /procesar devolviera el
+# archivo de una, los avisos quedarían pegados en la sesión sin mostrarse
+# (send_file no renderiza plantilla) y reaparecerían solos en cualquier
+# recarga posterior de página, sin relación con lo que el usuario hizo.
+# Con Post/Redirect/Get, los avisos se muestran y se consumen una sola vez,
+# en la página de resultado, y la descarga es un segundo click aparte.
+_DESCARGAS_PENDIENTES: dict[str, tuple[bytes, str]] = {}
+
 
 @app.route("/", methods=["GET"])
 def index():
     tipos = engine.listar_tipos()
     return render_template("index.html", tipos=tipos)
+
+
+@app.route("/plantilla/<tipo_id>")
+def plantilla(tipo_id):
+    try:
+        wb = engine.generar_plantilla_vacia(tipo_id)
+    except engine.TipoNoEncontradoError as e:
+        flash(str(e), "error")
+        return redirect(url_for("index"))
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"plantilla_{tipo_id}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/diccionario/<tipo_id>")
+def diccionario(tipo_id):
+    try:
+        cfg = engine.cargar_config(tipo_id)
+    except engine.TipoNoEncontradoError as e:
+        flash(str(e), "error")
+        return redirect(url_for("index"))
+
+    diccionario_cfg = cfg.get("diccionario_referencia")
+    diccionarios_cfg = cfg.get("diccionarios_referencia")
+    if not diccionario_cfg and not diccionarios_cfg:
+        flash(f"El tipo '{tipo_id}' no tiene un diccionario de referencia configurado.", "error")
+        return redirect(url_for("index"))
+
+    if diccionario_cfg:
+        origen_path = engine.BASE_DIR / diccionario_cfg["reference_file"]
+        if not origen_path.exists():
+            flash(f"Falta el archivo de diccionario: {origen_path}", "error")
+            return redirect(url_for("index"))
+        return send_file(
+            origen_path,
+            as_attachment=True,
+            download_name=origen_path.name,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # Varios diccionarios (Repuestos): se bundlean en un solo Excel, una hoja
+    # por diccionario, igual que se hace dentro de la plantilla descargable.
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    for d_cfg in diccionarios_cfg:
+        engine._agregar_hoja_diccionario(wb, d_cfg)
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"diccionarios_{tipo_id}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 @app.route("/procesar", methods=["POST"])
@@ -57,30 +132,67 @@ def procesar():
             filial = str(filiales_unicas[0]).strip()
 
             try:
-                tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
-                df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
-                    df_ampliado=resultado_df,
-                    tipo_material=tipo_material_sap,
-                )
-                nombre_sheet = f"SAP_{tipo_material_sap}"
-
-                pendientes = metadatos_sap.get("campos_pendientes", {})
-                if pendientes:
-                    avisos.append(
-                        f"ℹ️ {len(pendientes)} columnas SAP quedaron vacías porque el negocio todavía no confirmó "
-                        f"la regla (ver hoja PENDIENTES): {', '.join(list(pendientes.keys())[:5])}"
-                        + ("..." if len(pendientes) > 5 else "")
+                if tipo_id == "repuestos":
+                    # El tipo de material SAP no depende de la filial acá, sino
+                    # de "Serie o Lote?" en el input (N/A->ZRP1, Con Lote->ZRP2,
+                    # Con Serie->ZRP3, ya traducido a "TIPO MATERIAL REPUESTO"
+                    # por engine.py) — puede haber una mezcla de los 3 en el
+                    # mismo archivo.
+                    partes_sap_por_tipo = {}
+                    pendientes = {}
+                    obligatorios_vacios = []
+                    marcas_sin_categoria = set()
+                    marcas_sin_grupo_compras = set()
+                    for tipo_material_sap in ("ZRP1", "ZRP2", "ZRP3"):
+                        subset = resultado_df[resultado_df["TIPO MATERIAL REPUESTO"] == tipo_material_sap]
+                        if subset.empty:
+                            continue
+                        if tipo_material_sap != "ZRP1":
+                            materiales = subset.drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
+                            avisos.append(
+                                f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
+                            )
+                        df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
+                        partes_sap_por_tipo[tipo_material_sap] = df_parte
+                        pendientes.update(meta_parte.get("campos_pendientes", {}))
+                        obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
+                        marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
+                        marcas_sin_grupo_compras.update(meta_parte.get("marcas_sin_grupo_compras", []))
+                else:
+                    tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
+                    df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
+                        df_ampliado=resultado_df,
+                        tipo_material=tipo_material_sap,
                     )
+                    nombre_sheet = f"SAP_{tipo_material_sap}"
+                    pendientes = metadatos_sap.get("campos_pendientes", {})
+                    obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
+                    marcas_sin_categoria = set(metadatos_sap.get("marcas_sin_categoria_valoracion", []))
+                    marcas_sin_grupo_compras = set(metadatos_sap.get("marcas_sin_grupo_compras", []))
+
+                if marcas_sin_categoria:
+                    avisos.append(
+                        f"⚠️ Sin Categoría valoración confirmada para marca(s): "
+                        f"{', '.join(sorted(marcas_sin_categoria))} (ver docs/categoria_valoracion_pendientes.md)."
+                    )
+
+                if marcas_sin_grupo_compras:
+                    avisos.append(
+                        f"⚠️ Sin Grupo de compras confirmado para marca(s): "
+                        f"{', '.join(sorted(marcas_sin_grupo_compras))} (ver config/grupo_compras.json)."
+                    )
+
+                if pendientes:
+                    avisos.append(f"ℹ️ {len(pendientes)} columnas pendientes de negocio (ver hoja PENDIENTES).")
                     df_pendientes = pd.DataFrame(
                         {"Columna SAP pendiente": list(pendientes.keys()), "Motivo / nota del negocio": list(pendientes.values())}
                     )
 
-                obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
-                faltantes_no_pendientes = [c for c in obligatorios_vacios if c not in pendientes]
+                faltantes_no_pendientes = [c for c in dict.fromkeys(obligatorios_vacios) if c not in pendientes]
                 if faltantes_no_pendientes:
                     avisos.append(
-                        "⚠️ Columnas obligatorias sin dato (no son 'pendientes de negocio', probablemente falta "
-                        f"la tabla de referencia de esta filial): {', '.join(faltantes_no_pendientes)}"
+                        f"⚠️ Sin dato (no pendiente de negocio, revisar tabla de referencia): "
+                        f"{', '.join(faltantes_no_pendientes)}"
                     )
             except salida_sap.FormatoSAPError as e:
                 flash(f"Error en conversión SAP: {e}", "error")
@@ -90,17 +202,56 @@ def procesar():
         flash(a, "warning")
 
     buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-        df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+    if generar_sap and tipo_id == "repuestos":
+        # El programa que carga esto a SAP espera el mismo layout que
+        # PlanillaCargaTattersall_Repuestos_ouput.xlsx (encabezados hasta la
+        # fila 5, datos desde la fila 6) — una hoja por tipo de material
+        # (ZRP1/ZRP2/ZRP3), no todo junto en una sola hoja simple.
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+        for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
+            salida_sap.escribir_hoja_sap_repuestos(wb, tipo_material_sap, df_parte)
         if df_pendientes is not None:
-            df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
-    buffer.seek(0)
+            ws_pend = wb.create_sheet(title="PENDIENTES")
+            ws_pend.append(list(df_pendientes.columns))
+            for fila in df_pendientes.itertuples(index=False):
+                ws_pend.append(list(fila))
+        wb.save(buffer)
+    else:
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+            if df_pendientes is not None:
+                df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"
     nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
+    token = uuid.uuid4().hex
+    _DESCARGAS_PENDIENTES[token] = (buffer.getvalue(), nombre_salida)
+
+    return redirect(url_for("resultado", token=token))
+
+
+@app.route("/resultado/<token>")
+def resultado(token):
+    if token not in _DESCARGAS_PENDIENTES:
+        flash("El archivo generado ya no está disponible (probablemente ya lo descargaste). Genera la ampliación de nuevo.", "error")
+        return redirect(url_for("index"))
+    _, nombre_salida = _DESCARGAS_PENDIENTES[token]
+    return render_template("resultado.html", token=token, nombre_salida=nombre_salida)
+
+
+@app.route("/descargar/<token>")
+def descargar(token):
+    # Un solo uso: se saca del diccionario apenas se sirve, para no acumular
+    # archivos en memoria indefinidamente.
+    entrada = _DESCARGAS_PENDIENTES.pop(token, None)
+    if entrada is None:
+        abort(404)
+    contenido, nombre_salida = entrada
+
     return send_file(
-        buffer,
+        io.BytesIO(contenido),
         as_attachment=True,
         download_name=nombre_salida,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

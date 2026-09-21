@@ -4,16 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Ampliación de Materiales{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
   <header class="top">
     <div class="brand">MASTERDATA · AMPLIACIÓN A CENTROS</div>
-    <h1>Ampliación de Materiales</h1>
-    <nav>
-      <a href="{{ url_for('index') }}">Ampliar</a>
-      <a href="{{ url_for('historial') }}">Historial de correlativos</a>
-    </nav>
+    <div class="top-row">
+      <h1>Ampliación de Materiales</h1>
+      <nav>
+        <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">Ampliar</a>
+        <a href="{{ url_for('historial') }}" class="{{ 'active' if request.endpoint == 'historial' else '' }}">Historial de correlativos</a>
+      </nav>
+    </div>
   </header>
   <main>
     {% with messages = get_flashed_messages(with_categories=true) %}

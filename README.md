@@ -73,3 +73,22 @@ app/
 - Módulo de Repuestos (input distinto, cebe distinto — usa el mismo motor).
 - Descarga de plantilla vacía de input desde la propia web.
 - Autenticación básica si se despliega fuera de la red interna.
+
+## ¿Se puede leer este código sin saber programar?
+
+**No, no en general.** Los archivos `.py` (`engine.py`, `salida_sap.py`,
+`app.py`, `correlativo.py`) son código Python real — funciones, bucles,
+manejo de tablas (pandas) — y entenderlos requiere saber programar, sin
+importar cuán bien nombradas estén las variables o cuántos comentarios
+tengan. Eso es así con cualquier código, no algo puntual de este proyecto.
+
+**Con una excepción real: los archivos de configuración en `config/*.json`.**
+Ahí vive casi toda la lógica de negocio (qué campo SAP sale de qué columna,
+qué categoría de valoración le corresponde a cada marca, qué rango de
+material usa cada tipo, etc.), y cada decisión viene acompañada de una nota
+en español explicando de dónde salió el dato, quién lo confirmó y por qué
+("_nota", "_fuente", "notas_pendientes"). Alguien sin programar no puede
+*modificar* esos archivos con confianza (un JSON mal cerrado rompe todo),
+pero sí puede **leerlos y entender las reglas de negocio** casi como si
+fueran una minuta — de hecho estas notas se escribieron pensando en que
+Seba (que no programa) las pueda revisar directamente.
