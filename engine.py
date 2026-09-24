@@ -97,6 +97,9 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
                 celda.value = None
         # Las hojas de diccionario del archivo real ya vienen con formato
         # correcto — no hace falta reconstruirlas con _agregar_hoja_diccionario.
+        for nombre_hoja in plantilla_real.get("hojas_excluir", []):
+            if nombre_hoja in wb.sheetnames:
+                del wb[nombre_hoja]
         _agregar_validaciones_desde_traduccion(wb, ws, cfg)
         return wb
 
@@ -280,6 +283,11 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     for regla in cfg.get("traduccion_nombres", []):
         df, avisos_regla = _traducir_columna(df, regla)
         avisos_traduccion.extend(avisos_regla)
+
+    respaldo = cfg.get("columna_con_respaldo")
+    if respaldo:
+        preferida = df[respaldo["columna_preferida"]].astype(str).str.strip()
+        df[respaldo["columna_destino"]] = preferida.where(preferida != "", df[respaldo["columna_respaldo"]].astype(str))
 
     avisos_validacion: list[str] = []
     validaciones = cfg.get("validaciones")

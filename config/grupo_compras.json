@@ -2,7 +2,7 @@
   "_nota": "Dos tablas separadas porque Modelos y Repuestos usan Grupo de compras de forma distinta, y comparten los mismos códigos de filial (VA00, VC00...) con reglas distintas -- no se pueden mezclar en un solo diccionario. Cada plantilla SAP indica cuál usar con 'grupo_de_compras_dinamico': '<nombre_tabla>' (ver salida_sap._resolver_grupo_compras).",
 
   "unidades": {
-    "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la de UNIDADES (Modelos: ZVHE/ZCAM/ZMAQ).",
+    "_fuente": "Tabla que Seba pasó en arreglos_notas.txt (COD_GRUPO/DESC_GRUPO/FILIAL) — es la de UNIDADES (Modelos: ZVEH/ZCAM/ZMAQ).",
     "_uso_nota": "Por filial: o una sola opción fija ('_default', ej. VF00, donde 'TAU Unds' no distingue marca) o varias opciones según la MARCA de la fila (columna 'Grupo materiales 1'). 'MTT Unds Usadas' (M28, VA00) quedó fuera: es para unidades USADAS y esta ampliación ya filtra a 'Vta. Unidades Nuevas' (ver reference_filter en config/tipos/modelos.json), así que ese grupo no debería ser alcanzable acá.",
     "VA00": {
       "080": "M03",

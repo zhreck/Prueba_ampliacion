@@ -21,13 +21,32 @@ app.secret_key = "cambiar-esta-clave-en-produccion"
 # recarga posterior de página, sin relación con lo que el usuario hizo.
 # Con Post/Redirect/Get, los avisos se muestran y se consumen una sola vez,
 # en la página de resultado, y la descarga es un segundo click aparte.
-_DESCARGAS_PENDIENTES: dict[str, tuple[bytes, str]] = {}
+_DESCARGAS_PENDIENTES: dict[str, tuple[bytes, str, str]] = {}
 
 
 @app.route("/", methods=["GET"])
 def index():
+    # Página intermedia: elegir primero Repuestos o Modelo de Unidades (son
+    # procesos distintos, con inputs distintos) y recién después subir el
+    # archivo, para que nadie cargue un input en el flujo equivocado.
     tipos = engine.listar_tipos()
-    return render_template("index.html", tipos=tipos)
+    return render_template("seleccion.html", tipos=tipos)
+
+
+@app.route("/ampliar/<tipo_id>", methods=["GET"])
+def ampliar(tipo_id):
+    try:
+        cfg = engine.cargar_config(tipo_id)
+    except engine.TipoNoEncontradoError as e:
+        flash(str(e), "error")
+        return redirect(url_for("index"))
+    tipo = {
+        "id": cfg["id"],
+        "nombre": cfg["nombre"],
+        "descripcion": cfg.get("descripcion", ""),
+        "tiene_diccionario": bool(cfg.get("diccionario_referencia")),
+    }
+    return render_template("index.html", tipo=tipo)
 
 
 @app.route("/plantilla/<tipo_id>")
@@ -103,15 +122,17 @@ def procesar():
         flash("Selecciona un tipo de ampliación.", "error")
         return redirect(url_for("index"))
 
+    volver = redirect(url_for("ampliar", tipo_id=tipo_id))
+
     if not archivo or archivo.filename == "":
         flash("Sube un archivo Excel con el input.", "error")
-        return redirect(url_for("index"))
+        return volver
 
     try:
         resultado_df = engine.procesar(tipo_id, archivo)
     except (engine.TipoNoEncontradoError, engine.InputInvalidoError) as e:
         flash(str(e), "error")
-        return redirect(url_for("index"))
+        return volver
 
     avisos = resultado_df.attrs.get("avisos", [])
 
@@ -128,47 +149,57 @@ def procesar():
             filiales_unicas = resultado_df["FILIAL CODIGO"].unique()
             if len(filiales_unicas) > 1:
                 flash("⚠️ Entrada con múltiples filiales en el mismo archivo. Solo se puede generar SAP para una filial a la vez.", "error")
-                return redirect(url_for("index"))
+                return volver
             filial = str(filiales_unicas[0]).strip()
 
             try:
+                # Repuestos: "Serie o Lote?" define ZRP1/ZRP2/ZRP3 (columna
+                # "TIPO MATERIAL REPUESTO", ya traducida por engine.py).
+                # Modelo de Unidades: la columna "TIPO MATERIAL" del input
+                # (ZVEH/ZMAQ/ZCAM/ZUSA) define plantilla y rango. En ambos
+                # casos puede haber una mezcla de tipos en el mismo archivo,
+                # y cada tipo sale en su propia hoja.
                 if tipo_id == "repuestos":
-                    # El tipo de material SAP no depende de la filial acá, sino
-                    # de "Serie o Lote?" en el input (N/A->ZRP1, Con Lote->ZRP2,
-                    # Con Serie->ZRP3, ya traducido a "TIPO MATERIAL REPUESTO"
-                    # por engine.py) — puede haber una mezcla de los 3 en el
-                    # mismo archivo.
-                    partes_sap_por_tipo = {}
-                    pendientes = {}
-                    obligatorios_vacios = []
-                    marcas_sin_categoria = set()
-                    marcas_sin_grupo_compras = set()
-                    for tipo_material_sap in ("ZRP1", "ZRP2", "ZRP3"):
-                        subset = resultado_df[resultado_df["TIPO MATERIAL REPUESTO"] == tipo_material_sap]
-                        if subset.empty:
-                            continue
-                        if tipo_material_sap != "ZRP1":
-                            materiales = subset.drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
-                            avisos.append(
-                                f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
-                            )
-                        df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
-                        partes_sap_por_tipo[tipo_material_sap] = df_parte
-                        pendientes.update(meta_parte.get("campos_pendientes", {}))
-                        obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
-                        marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
-                        marcas_sin_grupo_compras.update(meta_parte.get("marcas_sin_grupo_compras", []))
+                    col_tipo_sap = "TIPO MATERIAL REPUESTO"
+                    tipos_sap = ("ZRP1", "ZRP2", "ZRP3")
                 else:
-                    tipo_material_sap = salida_sap.filial_a_tipo_material(filial)
-                    df_salida, metadatos_sap = salida_sap.aplicar_plantilla_sap(
-                        df_ampliado=resultado_df,
-                        tipo_material=tipo_material_sap,
+                    col_tipo_sap = "TIPO MATERIAL"
+                    tipos_sap = tuple(dict.fromkeys(resultado_df[col_tipo_sap]))
+                partes_sap_por_tipo = {}
+                pendientes = {}
+                obligatorios_vacios = []
+                marcas_sin_categoria = set()
+                marcas_sin_grupo_compras = set()
+                npf_largos = []
+                npf_duplicados = []
+                for tipo_material_sap in tipos_sap:
+                    subset = resultado_df[resultado_df[col_tipo_sap] == tipo_material_sap]
+                    if subset.empty:
+                        continue
+                    if tipo_id == "repuestos" and tipo_material_sap != "ZRP1":
+                        materiales = subset.drop_duplicates("NUMERO MATERIAL")["TEXTO BREVE"].tolist()
+                        avisos.append(
+                            f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
+                        )
+                    df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
+                    partes_sap_por_tipo[tipo_material_sap] = df_parte
+                    pendientes.update(meta_parte.get("campos_pendientes", {}))
+                    obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
+                    marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
+                    marcas_sin_grupo_compras.update(meta_parte.get("marcas_sin_grupo_compras", []))
+                    npf_largos.extend(meta_parte.get("npf_largos", []))
+                    npf_duplicados.extend(meta_parte.get("npf_duplicados", []))
+
+                if npf_largos:
+                    avisos.append(
+                        f"🔵 NPF de más de 18 caracteres ({len(npf_largos)}): se usó el correlativo en lugar del NPF "
+                        f"en Nº antiguo material / Número de artículo Europeo: " + ", ".join(dict.fromkeys(npf_largos))
                     )
-                    nombre_sheet = f"SAP_{tipo_material_sap}"
-                    pendientes = metadatos_sap.get("campos_pendientes", {})
-                    obligatorios_vacios = metadatos_sap.get("columnas_obligatorias_vacias", [])
-                    marcas_sin_categoria = set(metadatos_sap.get("marcas_sin_categoria_valoracion", []))
-                    marcas_sin_grupo_compras = set(metadatos_sap.get("marcas_sin_grupo_compras", []))
+                if npf_duplicados:
+                    avisos.append(
+                        f"🔵 NPF:Fabricante ya existente ({len(npf_duplicados)}): se dejó el correlativo en el EAN "
+                        f"(Número de artículo Europeo): " + ", ".join(dict.fromkeys(npf_duplicados))
+                    )
 
                 if marcas_sin_categoria:
                     avisos.append(
@@ -196,7 +227,7 @@ def procesar():
                     )
             except salida_sap.FormatoSAPError as e:
                 flash(f"Error en conversión SAP: {e}", "error")
-                return redirect(url_for("index"))
+                return volver
 
     for a in avisos:
         flash(a, "warning")
@@ -219,7 +250,11 @@ def procesar():
         wb.save(buffer)
     else:
         with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
+            if generar_sap:
+                for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
+                    df_parte.to_excel(writer, index=False, sheet_name=f"SAP_{tipo_material_sap}")
+            else:
+                df_salida.to_excel(writer, index=False, sheet_name=nombre_sheet)
             if df_pendientes is not None:
                 df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
 
@@ -227,7 +262,7 @@ def procesar():
     nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     token = uuid.uuid4().hex
-    _DESCARGAS_PENDIENTES[token] = (buffer.getvalue(), nombre_salida)
+    _DESCARGAS_PENDIENTES[token] = (buffer.getvalue(), nombre_salida, tipo_id)
 
     return redirect(url_for("resultado", token=token))
 
@@ -237,8 +272,8 @@ def resultado(token):
     if token not in _DESCARGAS_PENDIENTES:
         flash("El archivo generado ya no está disponible (probablemente ya lo descargaste). Genera la ampliación de nuevo.", "error")
         return redirect(url_for("index"))
-    _, nombre_salida = _DESCARGAS_PENDIENTES[token]
-    return render_template("resultado.html", token=token, nombre_salida=nombre_salida)
+    _, nombre_salida, tipo_id = _DESCARGAS_PENDIENTES[token]
+    return render_template("resultado.html", token=token, nombre_salida=nombre_salida, tipo_id=tipo_id)
 
 
 @app.route("/descargar/<token>")
@@ -248,7 +283,7 @@ def descargar(token):
     entrada = _DESCARGAS_PENDIENTES.pop(token, None)
     if entrada is None:
         abort(404)
-    contenido, nombre_salida = entrada
+    contenido, nombre_salida, _ = entrada
 
     return send_file(
         io.BytesIO(contenido),

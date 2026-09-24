@@ -19,6 +19,13 @@
   --err-ink: #B42318;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --sans: "IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 18px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow: 0 2px 8px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 12px 28px rgba(16, 24, 40, 0.10), 0 2px 6px rgba(16, 24, 40, 0.06);
 }
 
 * { box-sizing: border-box; }
@@ -95,7 +102,7 @@ header.top nav a.active {
 }
 
 main {
-  max-width: 760px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 40px 24px 80px;
 }
@@ -103,9 +110,9 @@ main {
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 32px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  box-shadow: var(--shadow);
 }
 
 .step {
@@ -165,17 +172,21 @@ fieldset {
 .tipo-option {
   display: block;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 14px 16px;
   margin-bottom: 10px;
   cursor: pointer;
   background: #FAFBFD;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
+
+.tipo-option:hover { border-color: #C3CCDA; }
 
 .tipo-option:has(input:checked) {
   border-color: var(--accent);
   border-width: 1.5px;
   background: var(--accent-bg);
+  box-shadow: var(--shadow-sm);
 }
 
 .tipo-option-head {
@@ -226,11 +237,12 @@ fieldset {
   gap: 8px;
   text-align: center;
   border: 1.5px dashed #C3CCDA;
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 28px;
   background: #FAFBFD;
   color: var(--ink-dim);
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .dropzone:hover, .dropzone-hover {
@@ -258,13 +270,16 @@ button {
   background: var(--accent);
   color: #FFFFFF;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 12px 24px;
   cursor: pointer;
   margin-left: 32px;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-button:hover { background: var(--accent-hover); }
+button:hover { background: var(--accent-hover); box-shadow: var(--shadow); transform: translateY(-1px); }
+button:active { transform: translateY(0); }
 
 .descarga-boton {
   display: inline-flex;
@@ -274,23 +289,50 @@ button:hover { background: var(--accent-hover); }
   font-weight: 600;
   background: var(--accent);
   color: #FFFFFF;
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 12px 24px;
   text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
-.descarga-boton:hover { background: var(--accent-hover); }
+.descarga-boton:hover { background: var(--accent-hover); box-shadow: var(--shadow); transform: translateY(-1px); }
 
-.volver {
-  margin-top: 18px;
+.back-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 16px 8px 12px;
+  text-decoration: none;
+  margin-bottom: 22px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.volver a { color: var(--ink-dim); }
-.volver a:hover { color: var(--accent); }
+.back-row .back-button { margin-bottom: 0; }
+
+.back-button svg { flex-shrink: 0; }
+
+.back-button:hover {
+  color: var(--accent-hover);
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
 
 .flash {
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 11px 14px;
   font-size: 13px;
   margin-bottom: 10px;
@@ -335,8 +377,9 @@ td.num, th.num { font-family: var(--mono); }
 .stat {
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .stat-label {
@@ -357,3 +400,35 @@ td.num, th.num { font-family: var(--mono); }
   font-size: 12px;
   color: var(--ok-ink);
 }
+
+/* Página intermedia: elegir Repuestos o Modelo de Unidades */
+.tipo-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.tipo-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.tipo-card:hover {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.tipo-card .tipo-name { font-size: 18px; font-weight: 600; }
+.tipo-card .desc { font-size: 13px; color: var(--ink-dim); }
+.tipo-card-go { margin-top: auto; color: var(--accent-hover); font-weight: 500; }

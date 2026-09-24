@@ -19,6 +19,7 @@
     "Texto breve (máximo 40 caracteres)",
     "Grupo de Artículo",
     "Texto jerarquía",
+    "Codigo antiguo",
     "NPF",
     "ORIGINAL_ALTERNATIVO",
     "NOMBRE MARCA",
@@ -27,7 +28,14 @@
     "Moneda"
   ],
 
-  "text_columns": ["NPF"],
+  "text_columns": ["NPF", "Codigo antiguo"],
+
+  "columna_con_respaldo": {
+    "columna_destino": "N ANTIGUO MATERIAL",
+    "columna_preferida": "Codigo antiguo",
+    "columna_respaldo": "NPF"
+  },
+  "_columna_con_respaldo_nota": "'Codigo antiguo' es opcional. Si viene, va a 'Nº antiguo material' (col. AL de la salida SAP); si no, se mantiene el comportamiento anterior (NPF). 'Número de Pieza de Fabricante (NPF)' (col. DC) siempre lleva el NPF.",
 
   "renombrar_columnas": {
     "Texto breve (máximo 40 caracteres)": "TEXTO BREVE"

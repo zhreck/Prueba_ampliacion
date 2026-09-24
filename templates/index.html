@@ -2,35 +2,31 @@
 {% block content %}
 <div class="panel">
 
+  <a class="back-button" href="{{ url_for('index') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5m0 0l6-6m-6 6l6 6"></path>
+    </svg>
+    Cambiar tipo de ampliación
+  </a>
+
   <div class="step">
     <span class="step-num">1</span>
-    <h2>Sube el Excel de input</h2>
+    <h2>Sube el Excel de input — {{ tipo.nombre }}</h2>
   </div>
   <p class="lede">
-    Selecciona el tipo de material y sube el Excel con la fila (o filas) del input.
+    {{ tipo.descripcion }} Sube el Excel con la fila (o filas) del input.
     El sistema completa automáticamente el centro, el cebe y el número de material —
     tú no tienes que llenar esos campos.
   </p>
 
   <form action="{{ url_for('procesar') }}" method="post" enctype="multipart/form-data">
-    <div class="field-label">Material a ampliar</div>
-    <fieldset>
-      {% for tipo in tipos %}
-        <label class="tipo-option">
-          <div class="tipo-option-head">
-            <input type="radio" name="tipo" value="{{ tipo.id }}" {% if loop.first %}checked{% endif %}>
-            <span class="tipo-name">{{ tipo.nombre }}</span>
-          </div>
-          <span class="desc">
-            {{ tipo.descripcion }}
-            — <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
-            {% if tipo.tiene_diccionario %}
-              — <a class="plantilla-link" href="{{ url_for('diccionario', tipo_id=tipo.id) }}">Descargar diccionario de códigos</a>
-            {% endif %}
-          </span>
-        </label>
-      {% endfor %}
-    </fieldset>
+    <input type="hidden" name="tipo" value="{{ tipo.id }}">
+    <p class="lede">
+      <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
+      {% if tipo.tiene_diccionario %}
+        — <a class="plantilla-link" href="{{ url_for('diccionario', tipo_id=tipo.id) }}">Descargar diccionario de códigos</a>
+      {% endif %}
+    </p>
 
     <div class="step">
       <span class="step-num">2</span>
@@ -57,7 +53,7 @@
         <input type="checkbox" id="generar_sap" name="generar_sap">
         <div>
           <span class="tipo-name">Generar formato de carga SAP (MM01)</span>
-          <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input. Los campos que el negocio todavía no confirmó quedan en blanco, listados en una hoja aparte "PENDIENTES".</span>
+          <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input.</span>
         </div>
       </label>
     </fieldset>

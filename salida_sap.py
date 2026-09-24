@@ -59,6 +59,7 @@ de la lista fija.
 """
 
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple
 
@@ -96,7 +97,7 @@ CAMPOS_FORZAR_VACIO = {"Categoría Clase", "Clase", "Unidad medida pedido", "Uni
 # Filiales que ya tienen tipo de material y plantilla configurados. ZUSA queda
 # fuera a propósito (fuera de alcance, ver docs/mapeo_filiales.json).
 FILIAL_A_TIPO_MATERIAL = {
-    "VF00": "ZVHE",
+    "VF00": "ZVEH",
     "VA00": "ZCAM",
     "VC00": "ZMAQ",
     "VD00": "ZMAQ",
@@ -104,8 +105,9 @@ FILIAL_A_TIPO_MATERIAL = {
 }
 
 TIPO_MATERIAL_A_CONFIG = {
-    "ZVHE": "zvhe.json",
+    "ZVEH": "zveh.json",
     "ZMAQ": "zmaq.json",
+    "ZUSA": "zusa.json",
     "ZCAM": "zcam.json",
     "ZRP1": "zrp1.json",
     "ZRP2": "zrp2.json",
@@ -173,6 +175,40 @@ def filial_a_tipo_material(filial: str) -> str:
     return tipo
 
 
+@lru_cache(maxsize=4)
+def _cargar_base_npf_fabricante(base_file: str, base_sheet: str, col_npf: str, col_fab: str,
+                                dicc_file: str, dicc_sheet: str, col_cod: str, col_desc: str,
+                                mtime: float) -> Tuple[frozenset, dict]:
+    """Devuelve (claves 'NPF:DESCRIPCION' ya existentes en la base de datos de
+    Repuestos, mapa código->descripción del fabricante). `mtime` solo invalida
+    el cache si cambia el archivo."""
+    dicc = pd.read_excel(BASE_DIR / dicc_file, sheet_name=dicc_sheet, dtype=str, keep_default_na=False)
+    codigo_a_desc = {str(c).strip(): str(d).strip() for c, d in zip(dicc[col_cod], dicc[col_desc]) if str(c).strip()}
+    base = pd.read_excel(BASE_DIR / base_file, sheet_name=base_sheet, dtype=str, keep_default_na=False)
+    claves = set()
+    for npf, fab in zip(base[col_npf], base[col_fab]):
+        desc = codigo_a_desc.get(str(fab).strip())
+        if desc:
+            claves.add(_clave_npf_fab(npf, desc))
+    return frozenset(claves), codigo_a_desc
+
+
+def _clave_npf_fab(npf, descripcion) -> str:
+    return f"{str(npf).strip()}:{str(descripcion).strip()}".upper()
+
+
+def _cargar_regla_npf(regla: dict) -> Tuple[set, dict]:
+    bd, dc = regla["base_datos"], regla["diccionario_fabricante"]
+    ruta = BASE_DIR / bd["reference_file"]
+    if not ruta.exists():
+        raise FormatoSAPError(f"Falta la base de datos de Repuestos: {ruta}")
+    claves, mapa = _cargar_base_npf_fabricante(
+        bd["reference_file"], bd["sheet"], bd["col_npf"], bd["col_fabricante"],
+        dc["reference_file"], dc["sheet"], dc["col_codigo"], dc["col_descripcion"], ruta.stat().st_mtime,
+    )
+    return set(claves), mapa
+
+
 def _primeras_ocurrencias(header: List[str]) -> Dict[str, int]:
     """Índice de la PRIMERA posición de cada nombre de columna en el header.
 
@@ -230,7 +266,7 @@ def aplicar_plantilla_sap(
 
     Args:
         df_ampliado: filas ya ampliadas a N centros (salida de engine.procesar()).
-        tipo_material: ZVHE, ZMAQ o ZCAM.
+        tipo_material: ZVEH, ZMAQ, ZCAM o ZUSA (o ZRP1/2/3).
 
     Returns:
         (DataFrame de 151 columnas, metadatos con pendientes/avisos)
@@ -270,6 +306,11 @@ def aplicar_plantilla_sap(
     resultado_filas = []
     numeros_asignados = {}
 
+    regla_npf = plantilla.get("regla_npf")
+    npf_claves_vistas, fab_codigo_a_desc = _cargar_regla_npf(regla_npf) if regla_npf else (set(), {})
+    npf_largos: List[str] = []
+    npf_duplicados: List[str] = []
+
     for material_idx, grupo in df_ampliado.groupby("NUMERO MATERIAL", sort=False):
         try:
             numero_sap = correlativo.siguiente_numero(rango_corr_nombre)
@@ -279,6 +320,23 @@ def aplicar_plantilla_sap(
             raise FormatoSAPError(f"Rango agotado para {tipo_material}: {e}") from e
 
         numeros_asignados[str(material_idx)] = numero_sap
+
+        overrides: Dict[str, str] = {}
+        if regla_npf:
+            primera = grupo.iloc[0]
+            npf = str(primera.get(regla_npf["columna_npf"], "")).strip()
+            for col_sap, col_origen in regla_npf["campos_max_len"].items():
+                if len(str(primera.get(col_origen, "")).strip()) > regla_npf["max_len"]:
+                    overrides[col_sap] = numero_sap
+                    if not npf_largos or npf_largos[-1] != npf:
+                        npf_largos.append(npf)
+            desc = fab_codigo_a_desc.get(str(primera.get(regla_npf["columna_fabricante"], "")).strip())
+            if desc and npf:
+                clave = _clave_npf_fab(npf, desc)
+                if clave in npf_claves_vistas:
+                    overrides[regla_npf["campo_ean"]] = numero_sap
+                    npf_duplicados.append(f"{npf}:{desc}")
+                npf_claves_vistas.add(clave)
 
         canales_fijos = plantilla.get("canales_distribucion")
         canales_por_filial = plantilla.get("canales_distribucion_por_filial")
@@ -293,11 +351,11 @@ def aplicar_plantilla_sap(
                 # 30), evidenciado en docs.../campos_repuestos_zrp{1,3}.xlsx.
                 for canal in canales:
                     resultado_filas.append(
-                        _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes, canal_forzado=canal)
+                        _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes, canal_forzado=canal, overrides=overrides)
                     )
             else:
                 resultado_filas.append(
-                    _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes)
+                    _generar_fila_sap(row, plantilla, bloque, header, primeras, numero_sap, campos_pendientes, overrides=overrides)
                 )
 
     df_sap = pd.DataFrame(resultado_filas, columns=header)
@@ -315,6 +373,8 @@ def aplicar_plantilla_sap(
         "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, plantilla, bloque, primeras),
         "marcas_sin_categoria_valoracion": marcas_sin_categoria,
         "marcas_sin_grupo_compras": marcas_sin_grupo_compras,
+        "npf_largos": npf_largos,
+        "npf_duplicados": npf_duplicados,
     }
 
     return df_sap, metadatos
@@ -513,6 +573,7 @@ def _generar_fila_sap(
     numero_material: int,
     campos_pendientes: Dict[str, str],
     canal_forzado: Optional[str] = None,
+    overrides: Optional[Dict[str, str]] = None,
 ) -> List[str]:
     fila = [""] * len(header)
 
@@ -542,6 +603,10 @@ def _generar_fila_sap(
     for col_sap, col_ampliado in plantilla.get("campos_desde_ampliado", {}).items():
         if col_ampliado in row.index:
             set_valor(col_sap, row[col_ampliado])
+
+    # 3b) Reglas puntuales de negocio (ej. regla_npf): pisan el mapeo directo.
+    for col_sap, valor in (overrides or {}).items():
+        set_valor(col_sap, valor)
 
     # 4) Campos pendientes de negocio: se dejan explícitamente en blanco, aunque
     #    algún paso anterior haya intentado poner algo (nunca se inventa un valor).

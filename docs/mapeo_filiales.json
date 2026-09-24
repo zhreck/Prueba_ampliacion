@@ -3,8 +3,8 @@
   "filiales": {
     "VF00": {
       "sociedad": "Tattersall Automotriz",
-      "tipo_material": "ZVHE",
-      "bloque_confirmacionCampos": "ZVHE (fila 3, label 'tau')",
+      "tipo_material": "ZVEH",
+      "bloque_confirmacionCampos": "ZVEH (fila 3, label 'tau')",
       "rango_material": "NO CONFIRMADO — falta que Seba lo entregue. En confirmacionCampos.xlsx la columna 'Material' viene vacía para este bloque.",
       "referencia_centro_cebe_existente": "app/data/reference/modelos_centros_ampliacion.xlsx (ya cargado, confirmado y probado — mapping fabricante -> centro/cebe, filtrado a AREA_LINEA_NEGOCIO='Vta. Unidades Nuevas')"
     },

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+  <div class="step">
+    <span class="step-num">1</span>
+    <h2>¿Qué quieres ampliar?</h2>
+  </div>
+  <p class="lede">
+    Repuestos y Modelo de Unidades son procesos distintos, con inputs distintos.
+    Elige el correcto antes de subir el archivo.
+  </p>
+
+  <div class="tipo-cards">
+    {% for tipo in tipos %}
+      <a class="tipo-card" href="{{ url_for('ampliar', tipo_id=tipo.id) }}">
+        <span class="tipo-name">{{ tipo.nombre }}</span>
+        <span class="desc">{{ tipo.descripcion }}</span>
+        <span class="tipo-card-go">Continuar →</span>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

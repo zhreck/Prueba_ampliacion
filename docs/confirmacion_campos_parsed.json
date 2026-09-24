@@ -1,8 +1,8 @@
 {
-  "ZVHE": {
+  "ZVEH": {
     "defaults": {
       "Ramo": "T",
-      "Tipo material": "ZVHE",
+      "Tipo material": "ZVEH",
       "Unidad medida base": "UN",
       "Categoría Clase": "300",
       "Clase": "ZMAQUINAS",

@@ -29,7 +29,7 @@
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
     "Grupo de artículos": "GRUPO ARTICULO",
-    "Nº antiguo material": "NPF",
+    "Nº antiguo material": "N ANTIGUO MATERIAL",
     "Número de artículo Europeo": "NPF",
     "Grupo materiales 1": "CODIGO MARCA",
     "Grupo materiales 2": "CODIGO ORIGINAL_ALTERNATIVO",
@@ -84,5 +84,28 @@
     "Grupo de compras: resuelto por FILIAL (no por marca, a diferencia de Modelos) vía config/grupo_compras.json (tabla 'repuestos', confirmada por Seba en arreglos_notas.txt) — VA00=M02, VC00/VD00/VE00=Q02, VF00=T02. Antes había un valor fijo único por plantilla (Q02 en ZRP1, M02 en ZRP3), evidenciado solo para la filial de ese ejemplo puntual (VC00/VA00) — quedaba mal para el resto.",
     "'Contabilizar en stock en insp.calidad'='X' confirmado por Seba en arreglos_notas.txt."
   ],
-  "grupo_de_compras_dinamico": "repuestos"
+  "grupo_de_compras_dinamico": "repuestos",
+  "regla_npf": {
+    "_nota": "Confirmado por Seba. (1) Si el valor que iría en 'campos_max_len' supera max_len (18) caracteres, se usa el correlativo (Material SAP) en su lugar; el NPF completo sigue yendo en 'Número de Pieza de Fabricante (NPF)'. (2) SAP calcula solo NPF:Fabricante = NPF + ':' + código corto del fabricante ('Fabricante externo' del diccionario, ej. F0022 -> DFAC), no el código Fxxxx. Si esa combinación ya existe en la base de datos de Repuestos (data/reference/Repuestos/BaseDatosRepuestos.xlsx, que trae el código Fxxxx y acá se pasa a 'Fabricante externo') o se repite antes en el mismo archivo, el correlativo va en el EAN ('Número de artículo Europeo'). 'Fabricante externo' es único por fabricante en el diccionario actual.",
+    "max_len": 18,
+    "campos_max_len": {
+      "Nº antiguo material": "N ANTIGUO MATERIAL",
+      "Número de artículo Europeo": "NPF"
+    },
+    "campo_ean": "Número de artículo Europeo",
+    "columna_npf": "NPF",
+    "columna_fabricante": "CODIGO FABRICANTE",
+    "base_datos": {
+      "reference_file": "data/reference/Repuestos/BaseDatosRepuestos.xlsx",
+      "sheet": "Data",
+      "col_npf": "Nº pieza fabricante",
+      "col_fabricante": "Fabricante"
+    },
+    "diccionario_fabricante": {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Fabricantes",
+      "col_codigo": "Fabricante",
+      "col_descripcion": "Fabricante externo"
+    }
+  }
 }
