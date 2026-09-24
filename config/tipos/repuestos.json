@@ -2,9 +2,7 @@
   "id": "repuestos",
   "nombre": "Repuestos",
   "descripcion": "Ampliación de repuestos a los centros SAP correspondientes según fabricante.",
-
   "_nota": "Esquema de input real v2, tomado de data/reference/Repuestos/plantilla_repuestos.xlsx (hoja Input) — reemplaza al esquema anterior (ZRP1_ZRP3.xlsx, eliminado). Cambio principal: el input ahora es por NOMBRE (marca, fabricante, filial, grupo de artículo, original/alternativo) en vez de por código; 'traduccion_nombres' abajo traduce cada nombre a su código antes de que el resto del motor procese la fila (que sigue trabajando con códigos, sin cambios). SERIADO/NRO SERIE del esquema viejo se reemplazan por 'Serie o Lote?' (N/A/Con Lote/Con Serie), que ahora define ZRP1/ZRP2/ZRP3 (antes solo existían ZRP1/ZRP3).",
-
   "input_sheet": "Input",
   "plantilla_desde_archivo": {
     "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
@@ -24,24 +22,22 @@
     "ORIGINAL_ALTERNATIVO",
     "NOMBRE MARCA",
     "NOMBRE FABRICANTE",
-    "Costo Unitario (Referencia)",
-    "Moneda"
+    "Costo Unitario (Referencia)"
   ],
-
-  "text_columns": ["NPF", "Codigo antiguo"],
-
+  "text_columns": [
+    "NPF",
+    "Codigo antiguo"
+  ],
   "columna_con_respaldo": {
     "columna_destino": "N ANTIGUO MATERIAL",
     "columna_preferida": "Codigo antiguo",
     "columna_respaldo": "NPF"
   },
   "_columna_con_respaldo_nota": "'Codigo antiguo' es opcional. Si viene, va a 'Nº antiguo material' (col. AL de la salida SAP); si no, se mantiene el comportamiento anterior (NPF). 'Número de Pieza de Fabricante (NPF)' (col. DC) siempre lleva el NPF.",
-
   "renombrar_columnas": {
     "Texto breve (máximo 40 caracteres)": "TEXTO BREVE"
   },
   "_renombrar_columnas_nota": "Solo cosmético: el resto del motor (correlativo, avisos) y app.py ya conocen esta columna como 'TEXTO BREVE' (igual que en Modelos).",
-
   "_traduccion_nombres_nota": "Cada regla traduce una columna 'por nombre' del input a la columna de código que el resto del motor ya sabe usar (mismo nombre que antes: FILIAL CODIGO, CODIGO MARCA, CODIGO FABRICANTE, GRUPO ARTICULO, CODIGO ORIGINAL_ALTERNATIVO). Si el nombre no matchea ninguna entrada del diccionario/mapa (sin mayúsculas ni espacios extra), la fila se excluye con aviso — nunca se inventa un código. 'Serie o Lote?' no traduce a un código SAP; genera 'TIPO MATERIAL REPUESTO' (ZRP1/ZRP2/ZRP3), que app.py usa para separar el archivo en hasta 3 partes antes de llamar a salida_sap.",
   "traduccion_nombres": [
     {
@@ -112,13 +108,17 @@
       "diccionario_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
       "diccionario_sheet": "Diccionario Jerarquías",
       "col_texto_completo": "Texto Jerarquía",
-      "col_nivel1": "Nivel 1", "ancho_nivel1": 5,
-      "col_nivel2": "Nivel 2", "ancho_nivel2": 5,
-      "col_nivel3": "Nivel 3", "ancho_nivel3": 8,
-      "_nota": "El input trae el camino COMPLETO (ej. 'FAW TRUCK REPUESTOS - REFRIGERACION - BOMBAS'), igual que la columna 'Texto Jerarquía' del diccionario -- no el nombre de hoja suelto (ej. 'BOMBAS'), que sí se repite muchas veces entre marcas/negocios y sería ambiguo. El código resultante es Nivel1(5)+Nivel2(5)+Nivel3(8) concatenado, formato confirmado con el único ejemplo real disponible (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002')."
+      "col_nivel1": "Nivel 1",
+      "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2",
+      "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3",
+      "ancho_nivel3": 8,
+      "_nota": "El input trae el camino COMPLETO (ej. 'FAW TRUCK REPUESTOS - REFRIGERACION - BOMBAS'), igual que la columna 'Texto Jerarquía' del diccionario -- no el nombre de hoja suelto (ej. 'BOMBAS'), que sí se repite muchas veces entre marcas/negocios y sería ambiguo. El código resultante es Nivel1(5)+Nivel2(5)+Nivel3(8) concatenado, formato confirmado con el único ejemplo real disponible (docs/ejemplo_output_ZMAQ_VC00.xlsx: '002030000100000002').",
+      "sin_relleno_niveles_vacios": true,
+      "_nota_niveles": "Jerarquías de 1 o 2 niveles NO se rellenan con ceros: 1 nivel = 5 dígitos, 2 niveles = 10, 3 niveles = 18 (ej. 'LYNK&CO REPUESTO - ALIMENTACION Y ESCAPE' -> '0000100001'). Rellenar generaba un código que no existe en SAP."
     }
   ],
-
   "validaciones": {
     "_nota": "Filas que no pasan alguna de estas reglas se excluyen (con aviso), nunca se corrigen solas.",
     "campos_obligatorios": [
@@ -141,15 +141,8 @@
     },
     "texto_breve_columna": "TEXTO BREVE",
     "texto_breve_max_len": 40,
-    "_texto_breve_nota": "Además del límite de 40 caracteres, el valor se pasa a MAYÚSCULAS siempre (pedido explícito de Seba).",
-    "costo_moneda": {
-      "columna_costo": "Costo Unitario (Referencia)",
-      "columna_moneda": "Moneda",
-      "reglas": { "CLP": "int", "USD": "float" },
-      "_nota": "Solo se valida cuando AMBOS campos vienen con dato (los dos son opcionales). Solo la regla 'int' (CLP) rechaza algo -- el peso chileno no tiene centavos, así que un CLP con decimales reales (ej. 5000.50) es un error. 'float' (USD) no rechaza por monto entero: Seba confirmó que un precio en USD sin centavos (ej. 1000.00) es válido igual, y una vez que Excel guarda el costo como número real no hay forma de distinguir '1000' de '1000.00' — solo se exige que sea un número válido."
-    }
+    "_texto_breve_nota": "Además del límite de 40 caracteres, el valor se pasa a MAYÚSCULAS siempre (pedido explícito de Seba)."
   },
-
   "reference_file": "data/reference/Repuestos/Cebe_Repuestos.xlsx",
   "reference_sheet": null,
   "_reference_nota": "Tabla fabricante->centro/cebe de Repuestos (AREA_LINEA_NEGOCIO='Venta Repuesto'), cubre VF00/VC00/VD00/VE00/VA00 igual que la de Modelos.",
@@ -157,36 +150,59 @@
     "column": "AREA_LINEA_NEGOCIO",
     "value": "Venta Repuesto"
   },
-
   "key_input": "CODIGO FABRICANTE",
   "key_reference": "COD_FABRICANTE",
   "fallback_value": "F9999",
   "filial_column": "COD_SOCIEDAD",
-
   "output_columns_from_reference": [
     "CENTRO",
     "COD_CEBE",
     "NOM_CODIGO_CEBE"
   ],
-
   "_disponibilidad_nota": "Matriz Centro x Fabricante propia de Repuestos (Centro_repuestos.xlsx, hoja Hoja1): 70 fabricantes cubiertos (vs. 17 en la de Modelos), solo valores 0/1 (sin 0.5 'por confirmar' en esta).",
   "disponibilidad": {
     "reference_file": "data/reference/Repuestos/Centro_repuestos.xlsx",
     "sheet": "Hoja1",
     "valor_bloqueado": 0
   },
-
   "_diccionario_referencia_nota": "El cliente pidió que el input y los diccionarios vengan juntos en un solo archivo, con cada diccionario en su propia hoja (como plantilla_repuestos.xlsx) -- por eso 'diccionarios_referencia' es una LISTA (a diferencia de Modelos, que sigue con un solo diccionario combinado). generar_plantilla_vacia() los adjunta todos como hojas extra de la plantilla descargable.",
   "diccionarios_referencia": [
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Jerarquías", "titulo_hoja": "Diccionario Jerarquías" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Tipo Material", "titulo_hoja": "Diccionario Tipo Material" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Grupo de Articulos", "titulo_hoja": "Grupo de Articulos" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Filiales", "titulo_hoja": "Diccionario Filiales" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Fabricantes", "titulo_hoja": "Diccionario Fabricantes" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Marcas", "titulo_hoja": "Diccionario Marcas" },
-    { "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx", "sheet": "Diccionario Original-Alternativ", "titulo_hoja": "Diccionario Original-Alternativ" }
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Jerarquías",
+      "titulo_hoja": "Diccionario Jerarquías"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Tipo Material",
+      "titulo_hoja": "Diccionario Tipo Material"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Grupo de Articulos",
+      "titulo_hoja": "Grupo de Articulos"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Filiales",
+      "titulo_hoja": "Diccionario Filiales"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Fabricantes",
+      "titulo_hoja": "Diccionario Fabricantes"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Marcas",
+      "titulo_hoja": "Diccionario Marcas"
+    },
+    {
+      "reference_file": "data/reference/Repuestos/plantilla_repuestos.xlsx",
+      "sheet": "Diccionario Original-Alternativ",
+      "titulo_hoja": "Diccionario Original-Alternativ"
+    }
   ],
-
   "correlativo": {
     "enabled": true,
     "nombre": "material_global",
@@ -194,5 +210,14 @@
     "range_min": 1,
     "range_max": 5000000
   },
-  "_correlativo_nota": "Comparte el rango 'material_global' con Modelos (es solo un número interno de agrupación de filas ampliadas, no el número de material SAP final) — README.md ya sugería esto como opción por defecto."
+  "_correlativo_nota": "Comparte el rango 'material_global' con Modelos (es solo un número interno de agrupación de filas ampliadas, no el número de material SAP final) — README.md ya sugería esto como opción por defecto.",
+  "normalizar_texto": true,
+  "_normalizar_texto_nota": "Pedido de Seba: en Repuestos todo texto se entrega sin espacios al inicio/final (NPF incluido), en MAYÚSCULAS y sin tildes (la Ñ se conserva). Se aplica al input antes de traducir y de nuevo a la salida. El matching contra los diccionarios también ignora tildes.",
+  "columnas_excluir_plantilla": [
+    "Moneda"
+  ],
+  "_columnas_excluir_plantilla_nota": "La columna Moneda ya no se usa (pedido de Seba): se saca de la plantilla descargable aunque el archivo base todavía la traiga. Un input viejo que aún la traiga se procesa igual (la columna se ignora).",
+  "costo_columna": "Costo Unitario (Referencia)",
+  "advertencia_inicial": "Antes de subir el archivo: el Grupo de Artículo debe corresponder a la familia de la Jerarquía (ej. 'FRENOS' con una jerarquía '... - FRENOS - ...'). Si son de familias distintas, SAP no deja pasar el material.",
+  "_costo_nota": "Sin Moneda ya no hay validación CLP/USD. El costo es opcional y va a la columna DQ ('Precio Variable') de la salida SAP."
 }

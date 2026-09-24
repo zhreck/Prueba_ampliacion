@@ -49,6 +49,7 @@ def ampliar(tipo_id):
         "nombre": cfg["nombre"],
         "descripcion": cfg.get("descripcion", ""),
         "tiene_diccionario": bool(cfg.get("diccionario_referencia")),
+        "advertencia": cfg.get("advertencia_inicial"),
     }
     return render_template("index.html", tipo=tipo)
 
@@ -186,6 +187,8 @@ def procesar():
                             f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
                         )
                     df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
+                    if tipo_id == "repuestos":
+                        df_parte = salida_sap.normalizar_df_sap(df_parte)
                     partes_sap_por_tipo[tipo_material_sap] = df_parte
                     pendientes.update(meta_parte.get("campos_pendientes", {}))
                     obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
@@ -240,12 +243,11 @@ def procesar():
     if generar_sap and tipo_id == "repuestos":
         # El programa que carga esto a SAP espera el mismo layout que
         # PlanillaCargaTattersall_Repuestos_ouput.xlsx (encabezados hasta la
-        # fila 5, datos desde la fila 6) — una hoja por tipo de material
-        # (ZRP1/ZRP2/ZRP3), no todo junto en una sola hoja simple.
+        # fila 5, datos desde la fila 6) — todos los repuestos en UNA hoja, da
+        # lo mismo si son ZRP1, ZRP2 o ZRP3.
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
-        for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
-            salida_sap.escribir_hoja_sap_repuestos(wb, tipo_material_sap, df_parte)
+        salida_sap.escribir_hoja_sap_repuestos(wb, pd.concat(list(partes_sap_por_tipo.values()), ignore_index=True))
         if df_pendientes is not None:
             ws_pend = wb.create_sheet(title="PENDIENTES")
             ws_pend.append(list(df_pendientes.columns))

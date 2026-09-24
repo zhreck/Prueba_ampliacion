@@ -1,0 +1,3 @@
+Todos los comentarios son solo para repuestos 
+1. se tienen que borrar los centros VC03 y VD03.
+2. se actualizo en input de repuestos 

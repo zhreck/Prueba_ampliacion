@@ -391,21 +391,30 @@ PLANILLA_CARGA_REPUESTOS_PATH = BASE_DIR / "data" / "reference" / "Repuestos" / 
 FILAS_ENCABEZADO_REPUESTOS = 5  # filas 1-5 = título/grupos/header/obligatorio/defaults; los datos van desde la fila 6.
 
 
-def escribir_hoja_sap_repuestos(wb: "openpyxl.Workbook", tipo_material: str, df_sap: pd.DataFrame) -> None:
+def normalizar_df_sap(df_sap: pd.DataFrame) -> pd.DataFrame:
+    """Repuestos: todo el texto de la salida SAP en MAYÚSCULAS, sin tildes y sin
+    espacios sobrantes. Va por posición porque el header SAP repite nombres."""
+    for i in range(df_sap.shape[1]):
+        df_sap.isetitem(i, df_sap.iloc[:, i].map(engine.normalizar_valor_texto))
+    return df_sap
+
+
+def escribir_hoja_sap_repuestos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, titulo: str = "REPUESTOS") -> None:
     """
-    Crea la hoja de salida de un tipo de material de Repuestos (ZRP1/ZRP2/
-    ZRP3) clonando las primeras 5 filas (título, agrupación de secciones,
-    nombres de columna, flags "Obligatorio" y notas de valor por defecto) de
-    la hoja real correspondiente en PlanillaCargaTattersall_Repuestos_ouput.xlsx
-    -- con el mismo formato -- y agregando los datos generados desde la fila
-    6. Seba confirmó que el programa que carga esto a SAP empieza a leer
-    desde ahí, así que el archivo que se descarga tiene que calzar con ese
-    layout, no alcanza con un header simple en la fila 1.
+    Crea UNA hoja con todos los repuestos (ZRP1, ZRP2 y ZRP3 juntos; el tipo
+    de cada fila queda en su columna 'Tipo material') clonando las primeras 5
+    filas (título, agrupación de secciones, nombres de columna, flags
+    "Obligatorio" y notas de valor por defecto) de la hoja ZRP1 de
+    PlanillaCargaTattersall_Repuestos_ouput.xlsx -- con el mismo formato -- y
+    agregando los datos generados desde la fila 6. Seba confirmó que el
+    programa que carga esto a SAP empieza a leer desde ahí, así que el archivo
+    que se descarga tiene que calzar con ese layout, no alcanza con un header
+    simple en la fila 1.
     """
     wb_origen = openpyxl.load_workbook(PLANILLA_CARGA_REPUESTOS_PATH, data_only=True)
-    ws_origen = wb_origen[tipo_material]
+    ws_origen = wb_origen["ZRP1"]
 
-    ws = wb.create_sheet(title=tipo_material)
+    ws = wb.create_sheet(title=titulo)
     engine._clonar_hoja(ws_origen, ws, max_filas=FILAS_ENCABEZADO_REPUESTOS)
 
     fila_destino = FILAS_ENCABEZADO_REPUESTOS + 1

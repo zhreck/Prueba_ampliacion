@@ -9,6 +9,10 @@
     Cambiar tipo de ampliación
   </a>
 
+  {% if tipo.advertencia %}
+    <div class="flash warning">⚠️ {{ tipo.advertencia }}</div>
+  {% endif %}
+
   <div class="step">
     <span class="step-num">1</span>
     <h2>Sube el Excel de input — {{ tipo.nombre }}</h2>

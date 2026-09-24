@@ -36,7 +36,8 @@
     "Fabricante": "CODIGO FABRICANTE",
     "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA"
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA",
+    "Precio Variable": "Costo Unitario (Referencia)"
   },
   "_campos_desde_ampliado_nota": "Idéntico a zrp1.json — clonado a falta de un ejemplo de salida real propio de ZRP2.",
   "defaults_confirmados_extra": {

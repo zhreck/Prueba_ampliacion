@@ -36,7 +36,8 @@
     "Fabricante": "CODIGO FABRICANTE",
     "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
-    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA"
+    "Jerarquía productos\n MARA-PRDHA\nReplicar en\nMVKE-PRODH": "CODIGO JERARQUIA",
+    "Precio Variable": "Costo Unitario (Referencia)"
   },
   "_campos_desde_ampliado_nota": "'Nº antiguo material' y 'Número de artículo Europeo' = mismo valor que NPF (evidenciado: en el ejemplo real coinciden exactamente, algo que no pasa en Modelos/Maquinaria donde ambos quedan vacíos). 'Grupo materiales 2' <- CODIGO ORIGINAL_ALTERNATIVO: código 010/020, traducido desde el nombre ORIGINAL/ALTERNATIVO del input vía config/tipos/repuestos.json (traduccion_nombres).",
   "defaults_confirmados_extra": {

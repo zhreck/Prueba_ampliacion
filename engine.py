@@ -13,6 +13,7 @@ Para agregar un tipo nuevo (ej. Repuestos) más adelante:
 """
 
 import copy
+import unicodedata
 import json
 from pathlib import Path
 
@@ -33,6 +34,41 @@ class TipoNoEncontradoError(Exception):
 
 class InputInvalidoError(Exception):
     pass
+
+
+def _sin_tildes(texto: str) -> str:
+    """Quita tildes/diéresis (á->a, ü->u) conservando la Ñ."""
+    texto = texto.replace("Ñ", "\0N").replace("ñ", "\0n")
+    texto = "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn")
+    return texto.replace("\0N", "Ñ").replace("\0n", "ñ")
+
+
+def normalizar_valor_texto(v):
+    """Sin espacios al inicio/final, MAYÚSCULAS y sin tildes. Solo toca strings."""
+    if isinstance(v, str):
+        return _sin_tildes(v.strip()).upper()
+    return v
+
+
+def normalizar_df_texto(df: pd.DataFrame) -> pd.DataFrame:
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].map(normalizar_valor_texto)
+    return df
+
+
+def _formatear_costo(v):
+    """Costo como texto numérico limpio: 5000.0 -> '5000', '10,99' -> '10.99'; vacío se queda vacío."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    texto = str(v).strip().replace(",", ".")
+    if texto == "":
+        return ""
+    try:
+        numero = float(texto)
+    except ValueError:
+        return texto
+    return str(int(numero)) if numero == int(numero) else str(numero)
 
 
 def listar_tipos() -> list[dict]:
@@ -97,6 +133,8 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
                 celda.value = None
         # Las hojas de diccionario del archivo real ya vienen con formato
         # correcto — no hace falta reconstruirlas con _agregar_hoja_diccionario.
+        for nombre_col in cfg.get("columnas_excluir_plantilla", []):
+            _quitar_columna_plantilla(ws, nombre_col)
         for nombre_hoja in plantilla_real.get("hojas_excluir", []):
             if nombre_hoja in wb.sheetnames:
                 del wb[nombre_hoja]
@@ -123,6 +161,19 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
         _agregar_hoja_diccionario(wb, diccionario_cfg)
 
     return wb
+
+
+def _quitar_columna_plantilla(ws, nombre_col: str) -> None:
+    """Borra de la hoja de input la columna con ese encabezado (si existe) y las
+    listas desplegables que la cubrían."""
+    idx = next((c for c in range(1, ws.max_column + 1)
+                if str(ws.cell(row=1, column=c).value or "").strip() == nombre_col), None)
+    if idx is None:
+        return
+    for dv in list(ws.data_validations.dataValidation):
+        if any(r.min_col <= idx <= r.max_col for r in dv.sqref.ranges):
+            ws.data_validations.dataValidation.remove(dv)
+    ws.delete_cols(idx)
 
 
 def _agregar_validaciones_desde_traduccion(wb: "openpyxl.Workbook", ws, cfg: dict) -> None:
@@ -274,6 +325,14 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
     renombrar = cfg.get("renombrar_columnas", {})
     df = df.rename(columns=renombrar)
 
+    # Repuestos: sin espacios sobrantes (NPF incluido), mayúsculas y sin tildes
+    # en todo texto, antes de traducir/validar.
+    if cfg.get("normalizar_texto"):
+        df = normalizar_df_texto(df)
+    columna_costo = cfg.get("costo_columna")
+    if columna_costo and columna_costo in df.columns:
+        df[columna_costo] = df[columna_costo].map(_formatear_costo)
+
     # Algunos tipos (Repuestos) reciben el input por NOMBRE (marca, fabricante,
     # filial...) y necesitan traducirlo a código antes de que el resto del
     # motor pueda hacer matching contra la tabla de referencia (que sí es por
@@ -360,21 +419,29 @@ def _traducir_columna(df: pd.DataFrame, regla: dict) -> tuple[pd.DataFrame, list
         origen_path = BASE_DIR / regla["diccionario_file"]
         dicc_df = pd.read_excel(origen_path, sheet_name=regla["diccionario_sheet"], dtype=str, keep_default_na=False)
         dicc_df = dicc_df.dropna(subset=[regla["col_texto_completo"]])
+        if regla.get("sin_relleno_niveles_vacios"):
+            # Un nivel vacío no se rellena con ceros: la jerarquía de 1 o 2
+            # niveles simplemente es más corta (5 / 10 / 18 dígitos).
+            def _nivel(col, ancho):
+                return dicc_df[col].fillna("").astype(str).str.strip().map(lambda v: v.zfill(ancho) if v else "")
+        else:
+            def _nivel(col, ancho):
+                return dicc_df[col].fillna("").str.zfill(ancho)
         codigo = (
             dicc_df[regla["col_nivel1"]].str.zfill(regla["ancho_nivel1"])
-            + dicc_df[regla["col_nivel2"]].fillna("").str.zfill(regla["ancho_nivel2"])
-            + dicc_df[regla["col_nivel3"]].fillna("").str.zfill(regla["ancho_nivel3"])
+            + _nivel(regla["col_nivel2"], regla["ancho_nivel2"])
+            + _nivel(regla["col_nivel3"], regla["ancho_nivel3"])
         )
         mapa = dict(zip(dicc_df[regla["col_texto_completo"]], codigo))
     else:
         raise InputInvalidoError(f"Tipo de traducción desconocido: {regla['tipo']}")
 
-    mapa_normalizado = {str(k).strip().upper(): v for k, v in mapa.items()}
+    mapa_normalizado = {_sin_tildes(str(k).strip()).upper(): v for k, v in mapa.items()}
 
     if col_origen not in df.columns:
         return df, []
 
-    valores_normalizados = df[col_origen].astype(str).str.strip().str.upper()
+    valores_normalizados = df[col_origen].astype(str).map(lambda v: _sin_tildes(v.strip()).upper())
     codigos = valores_normalizados.map(mapa_normalizado)
 
     avisos = []
@@ -700,5 +767,8 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
         if col in resultado.columns:
             resultado[col] = resultado[col].astype(str)
     
+    if cfg.get("normalizar_texto"):
+        resultado = normalizar_df_texto(resultado)
+
     resultado.attrs["avisos"] = avisos
     return resultado
