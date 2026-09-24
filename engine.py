@@ -527,6 +527,14 @@ def _cargar_disponibilidad(cfg: dict) -> dict[tuple[str, str], float] | None:
     return lookup
 
 
+def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
+    """Tipo que se muestra en el historial de correlativos: el tipo de
+    ampliación + el tipo de material SAP de la fila (ej. 'repuestos · ZRP1')."""
+    col = {"repuestos": "TIPO MATERIAL REPUESTO", "modelos": "TIPO MATERIAL"}.get(tipo_id)
+    tipo_sap = str(fila_input.get(col, "")).strip() if col else ""
+    return f"{tipo_id} · {tipo_sap}" if tipo_sap else tipo_id
+
+
 def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     Punto de entrada principal: recibe el Excel del usuario (file-like) y
@@ -654,7 +662,7 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
                 nombre_contador=corr_cfg["nombre"],
                 range_min=corr_cfg["range_min"],
                 range_max=corr_cfg["range_max"],
-                tipo=tipo_id,
+                tipo=_etiqueta_tipo_historial(tipo_id, fila_input),
                 texto_breve=str(fila_input.get("TEXTO BREVE", "")),
                 fabricante_codigo=str(valor_key),
             )

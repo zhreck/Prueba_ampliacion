@@ -313,7 +313,14 @@ def aplicar_plantilla_sap(
 
     for material_idx, grupo in df_ampliado.groupby("NUMERO MATERIAL", sort=False):
         try:
-            numero_sap = correlativo.siguiente_numero(rango_corr_nombre)
+            primera_fila = grupo.iloc[0]
+            familia = "repuestos" if tipo_material.startswith("ZRP") else "modelos"
+            numero_sap = correlativo.siguiente_numero(
+                rango_corr_nombre,
+                tipo=f"{familia} · {tipo_material}",
+                texto_breve=str(primera_fila.get("TEXTO BREVE", "")),
+                fabricante_codigo=str(primera_fila.get("CODIGO FABRICANTE", primera_fila.get("FABRICANTE CODIGO", ""))),
+            )
         except correlativo.RangoNoConfiguradoError as e:
             raise FormatoSAPError(f"Error de correlativo para {tipo_material}: {e}") from e
         except correlativo.RangoAgotadoError as e:

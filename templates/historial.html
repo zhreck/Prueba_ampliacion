@@ -19,6 +19,7 @@
       <tr>
         <th class="num">Número</th>
         <th>Tipo</th>
+        <th>Rango</th>
         <th>Texto breve</th>
         <th>Fabricante</th>
         <th>Fecha</th>
@@ -29,12 +30,13 @@
       <tr>
         <td class="num">{{ r.numero_asignado }}</td>
         <td>{{ r.tipo }}</td>
+        <td>{{ r.rango }}</td>
         <td>{{ r.texto_breve }}</td>
         <td class="num">{{ r.fabricante_codigo }}</td>
         <td class="num">{{ r.fecha }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="5">Todavía no se ha generado ninguna ampliación.</td></tr>
+      <tr><td colspan="6">Todavía no se ha generado ninguna ampliación.</td></tr>
       {% endfor %}
     </tbody>
   </table>

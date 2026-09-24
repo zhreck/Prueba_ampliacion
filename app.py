@@ -1,10 +1,14 @@
+import hashlib
+import hmac
 import io
+import os
+import subprocess
 import uuid
 from datetime import datetime
 
 import openpyxl
 import pandas as pd
-from flask import Flask, render_template, request, send_file, flash, redirect, url_for, abort
+from flask import Flask, render_template, request, send_file, flash, redirect, url_for, abort, jsonify
 
 import engine
 import correlativo
@@ -295,21 +299,76 @@ def descargar(token):
 
 @app.route("/historial")
 def historial():
-    tipos_cfg = {t["id"]: engine.cargar_config(t["id"]) for t in engine.listar_tipos()}
+    # Un contador por rango SAP real: Modelos tiene un rango independiente por
+    # tipo de material (ZVEH/ZMAQ/ZCAM/ZUSA); Repuestos comparte uno solo
+    # entre ZRP1/ZRP2/ZRP3 (el tipo de material no importa para la numeración).
+    # El contador interno 'material_global' no se muestra.
+    rangos = [
+        ("Repuestos (ZRP1/ZRP2/ZRP3)", "repuestos_material"),
+        ("Modelos · ZVEH", "zveh_material"),
+        ("Modelos · ZMAQ", "zmaq_material"),
+        ("Modelos · ZCAM", "zcam_material"),
+        ("Modelos · ZUSA", "zusa_material"),
+    ]
     estados = []
-    for tipo_id, cfg in tipos_cfg.items():
-        corr_cfg = cfg.get("correlativo", {})
-        if corr_cfg.get("enabled"):
-            try:
-                estado = correlativo.estado_contador(
-                    corr_cfg["nombre"], corr_cfg.get("range_min"), corr_cfg.get("range_max")
-                )
-                estados.append((tipo_id, estado))
-            except Exception:
-                pass  # Skip si no se puede obtener estado
-    
+    for etiqueta, nombre in rangos:
+        r = correlativo.obtener_rango(nombre)
+        estados.append((etiqueta, correlativo.estado_contador(nombre, r["min"], r["max"])))
+
     registros = correlativo.historial(limit=200)
     return render_template("historial.html", estados=estados, registros=registros)
+
+
+# Auto-deploy en PythonAnywhere: un webhook de GitHub (evento "push") llama a
+# esta ruta; se verifica la firma, se hace git pull y se "toca" el archivo WSGI
+# para que PythonAnywhere recargue la app (equivale al botón Reload).
+DEPLOY_REPO_DIR = "/home/zhreck/Prueba_ampliacion"
+DEPLOY_WSGI_FILE = "/var/www/zhreck_pythonanywhere_com_wsgi.py"
+
+
+@app.route("/deploy-hook", methods=["POST"])
+def deploy_hook():
+    try:
+        secreto = os.environ.get("GITHUB_WEBHOOK_SECRET")
+        if not secreto:
+            app.logger.error("deploy-hook: GITHUB_WEBHOOK_SECRET no está configurada.")
+            return jsonify({"ok": False, "detalle": "GITHUB_WEBHOOK_SECRET no está configurada en el servidor."}), 500
+
+        firma_recibida = request.headers.get("X-Hub-Signature-256", "")
+        firma_esperada = "sha256=" + hmac.new(
+            secreto.encode("utf-8"), request.get_data(), hashlib.sha256
+        ).hexdigest()
+        if not firma_recibida or not hmac.compare_digest(firma_recibida, firma_esperada):
+            app.logger.warning("deploy-hook: firma inválida o ausente.")
+            return jsonify({"ok": False, "detalle": "Firma inválida."}), 403
+
+        if request.headers.get("X-GitHub-Event") == "ping":
+            return jsonify({"ok": True, "detalle": "pong (webhook configurado correctamente)."})
+
+        pull = subprocess.run(
+            ["git", "pull"],
+            cwd=DEPLOY_REPO_DIR,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if pull.returncode != 0:
+            app.logger.error("deploy-hook: git pull falló: %s", pull.stderr.strip())
+            return jsonify({"ok": False, "detalle": f"git pull falló: {pull.stderr.strip()}"}), 500
+
+        # Actualiza el mtime del WSGI (lo crea si no existe) -> reload automático.
+        with open(DEPLOY_WSGI_FILE, "a"):
+            pass
+        os.utime(DEPLOY_WSGI_FILE, None)
+
+        app.logger.info("deploy-hook: deploy OK. %s", pull.stdout.strip())
+        return jsonify({"ok": True, "detalle": pull.stdout.strip() or "git pull OK, reload solicitado."})
+    except subprocess.TimeoutExpired:
+        app.logger.error("deploy-hook: git pull excedió 30s.")
+        return jsonify({"ok": False, "detalle": "git pull excedió el timeout de 30s."}), 500
+    except Exception as e:  # nunca tumbar el servidor por un deploy fallido
+        app.logger.exception("deploy-hook: error inesperado")
+        return jsonify({"ok": False, "detalle": f"Error inesperado: {e}"}), 500
 
 
 if __name__ == "__main__":

@@ -29,7 +29,7 @@ DEFAULT_RANGOS = {
     "material_global": {"min": 1, "max": 5000000, "descripcion": "Ampliación original"},
     "zmaq_material": {"min": 20000000, "max": 29999999, "descripcion": "ZMAQ - Maquinarias (VC00, VD00, VE00)"},
     "zcam_material": {"min": 30000000, "max": 39999999, "descripcion": "ZCAM - Camiones (VA00)"},
-    "zveh_material": {"min": 10000000, "max": 19999999, "descripcion": "ZVEH/ZVEH - Vehículos y Motos (VF00)"},
+    "zveh_material": {"min": 10000000, "max": 19999999, "descripcion": "ZVEH - Vehículos y Motos (VF00)"},
     "zusa_material": {"min": 40000000, "max": 49999999, "descripcion": "ZUSA - Unidades usados"},
     "repuestos_material": {"min": 50000000, "max": 79999999, "descripcion": "ZRP1/ZRP2/ZRP3 - Repuestos (confirmado por Seba)"},
 }
@@ -178,11 +178,18 @@ def historial(limit: int = 100) -> list:
     conn = _get_conn()
     try:
         cur = conn.execute(
-            """SELECT numero_asignado, tipo, texto_breve, fabricante_codigo, fecha
-               FROM historial_asignaciones ORDER BY id DESC LIMIT ?""",
+            """SELECT numero_asignado, tipo, texto_breve, fabricante_codigo, fecha, nombre_contador
+               FROM historial_asignaciones
+               WHERE nombre_contador != 'material_global'
+               ORDER BY id DESC LIMIT ?""",
             (limit,),
         )
-        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha"]
-        return [dict(zip(cols, r)) for r in cur.fetchall()]
+        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "nombre_contador"]
+        registros = [dict(zip(cols, r)) for r in cur.fetchall()]
+        # Solo se muestra el número SAP real (uno por material); el número
+        # interno de 'material_global' no aparece. "rango" = Repuesto o Modelo.
+        for r in registros:
+            r["rango"] = "Repuesto" if r["nombre_contador"] == "repuestos_material" else "Modelo"
+        return registros
     finally:
         conn.close()
