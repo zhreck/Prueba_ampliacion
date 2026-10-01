@@ -126,7 +126,9 @@ def procesar():
             generar_sap = False
         else:
             filiales_unicas = resultado_df["FILIAL CODIGO"].unique()
-            if len(filiales_unicas) > 1:
+            # Repuestos ya resuelve canales/grupos/centros por la filial de cada
+            # fila, así que acepta varias filiales en el mismo archivo.
+            if len(filiales_unicas) > 1 and tipo_id != "repuestos":
                 flash("⚠️ Entrada con múltiples filiales en el mismo archivo. Solo se puede generar SAP para una filial a la vez.", "error")
                 return redirect(url_for("index"))
             filial = str(filiales_unicas[0]).strip()

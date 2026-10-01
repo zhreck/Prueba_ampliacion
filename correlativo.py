@@ -182,6 +182,15 @@ def historial(limit: int = 100) -> list:
             (limit,),
         )
         cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha"]
-        return [dict(zip(cols, r)) for r in cur.fetchall()]
+        registros = [dict(zip(cols, r)) for r in cur.fetchall()]
+        for reg in registros:
+            # Se guarda en formato ISO ("2026-10-01T14:32:07") para que el TEXT
+            # ordene bien en SQLite; para mostrarlo se separa fecha y hora en
+            # columnas propias (ver historial.html) así la hora no se corta a
+            # la mitad si el ancho de columna queda justo.
+            fecha, _, hora = reg["fecha"].partition("T")
+            reg["fecha_fmt"] = fecha
+            reg["hora_fmt"] = hora
+        return registros
     finally:
         conn.close()
