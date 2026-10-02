@@ -365,7 +365,7 @@ th {
   border-bottom: 1px solid var(--line);
 }
 
-td.num, th.num { font-family: var(--mono); }
+td.num, th.num { font-family: var(--mono); white-space: nowrap; }
 
 .stat-row {
   display: grid;

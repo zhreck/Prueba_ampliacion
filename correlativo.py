@@ -184,12 +184,16 @@ def historial(limit: int = 100) -> list:
                ORDER BY id DESC LIMIT ?""",
             (limit,),
         )
-        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "nombre_contador"]
+        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha"]
         registros = [dict(zip(cols, r)) for r in cur.fetchall()]
-        # Solo se muestra el número SAP real (uno por material); el número
-        # interno de 'material_global' no aparece. "rango" = Repuesto o Modelo.
-        for r in registros:
-            r["rango"] = "Repuesto" if r["nombre_contador"] == "repuestos_material" else "Modelo"
+        for reg in registros:
+            # Se guarda en formato ISO ("2026-10-01T14:32:07") para que el TEXT
+            # ordene bien en SQLite; para mostrarlo se separa fecha y hora en
+            # columnas propias (ver historial.html) así la hora no se corta a
+            # la mitad si el ancho de columna queda justo.
+            fecha, _, hora = reg["fecha"].partition("T")
+            reg["fecha_fmt"] = fecha
+            reg["hora_fmt"] = hora
         return registros
     finally:
         conn.close()

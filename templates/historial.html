@@ -23,6 +23,7 @@
         <th>Texto breve</th>
         <th>Fabricante</th>
         <th>Fecha</th>
+        <th>Hora</th>
       </tr>
     </thead>
     <tbody>
@@ -33,7 +34,8 @@
         <td>{{ r.rango }}</td>
         <td>{{ r.texto_breve }}</td>
         <td class="num">{{ r.fabricante_codigo }}</td>
-        <td class="num">{{ r.fecha }}</td>
+        <td class="num">{{ r.fecha_fmt }}</td>
+        <td class="num">{{ r.hora_fmt }}</td>
       </tr>
       {% else %}
       <tr><td colspan="6">Todavía no se ha generado ninguna ampliación.</td></tr>
