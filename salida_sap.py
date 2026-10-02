@@ -697,10 +697,21 @@ def _generar_fila_sap(
 
 def _obligatorios_vacios(df: pd.DataFrame, header: List[str], plantilla: dict, bloque: dict, primeras: Dict[str, int]) -> List[str]:
     """De la lista de 'obligatorios' (de la plantilla, o si no del bloque de
-    confirmación), cuáles quedaron vacíos en TODAS las filas."""
+    confirmación), cuáles quedaron vacíos en TODAS las filas.
+
+    Los de CAMPOS_FORZAR_VACIO no cuentan acá aunque figuren como
+    "obligatorios" en confirmacion_campos_parsed.json: quedan vacíos a
+    propósito (confirmado por Seba) salvo que la plantilla de esa filial
+    los llene ella misma (ej. zmaq.json con Categoría Clase/Clase), caso en
+    el que ya no estarían vacíos y ni siquiera llegarían a este punto. No
+    es un dato faltante que haya que revisar — avisar igual confundía
+    (pedido de Seba para Vehículos y Camiones: no mostrar ese aviso).
+    """
     vacios = []
     obligatorios = plantilla.get("obligatorios") or bloque.get("obligatorios", [])
     for campo in obligatorios:
+        if campo in CAMPOS_FORZAR_VACIO:
+            continue
         idx = primeras.get(campo)
         if idx is None:
             continue
