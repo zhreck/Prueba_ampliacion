@@ -1,0 +1,185 @@
+{
+  "id": "modelos_vehiculos_camiones",
+  "nombre": "Modelos - Vehículos y Camiones",
+  "descripcion": "Ampliación de vehículos y camiones nuevos (Tattersall Automotriz/ZVEH, Maco Tattersall/ZCAM) a los centros SAP correspondientes según marca y fabricante.",
+  "_nota_general": "Reemplaza al input viejo de Modelos (plantilla_modelos.xlsx, retirado) solo para Vehículos y Camiones. Maquinaria (ZMAQ) y Usados (ZUSA) quedan pendientes de su propio input nuevo -- ver config/tipos/modelos.json (oculto mientras tanto).",
+
+  "input_sheet": "INPUT",
+  "plantilla_desde_archivo": {
+    "reference_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
+    "sheet": "INPUT"
+  },
+  "_plantilla_desde_archivo_nota": "El 'Texto breve' y el 'NPF' ya NO se calculan acá: el input real los trae calculados por fórmulas de Excel (LET/XLOOKUP/REDUCE) a partir de Modelo/Versión/Cilindrada/Combustible/Tracción/Transmisión/Potencia batería, y Excel deja el VALOR ya calculado guardado en la celda -- pandas lee ese valor cacheado, no la fórmula. El resto de las columnas (Modelo, Versión, Cilindrada, ...) solo existen para que esas fórmulas funcionen en Excel; el motor no las usa para nada.",
+
+  "input_columns": [
+    "FILIAL CODIGO",
+    "TIPO MATERIAL",
+    "TEXTO BREBE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "MODELO",
+    "VERSION",
+    "CILINDRADA",
+    "COMBUSTIBLE",
+    "TRACCION",
+    "TRANSMISION",
+    "POTENCIA BATERIA (solo si ELECTRICO)",
+    "GRUPO ARTICULO",
+    "NOMBRE JERARQUIA",
+    "NOMBRE MARCA",
+    "NOMBRE FABRICANTE",
+    "GRUPO IMPUTACION",
+    "DECIMALES CILINDRADA (1 o 2)",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+
+  "text_columns": [
+    "NPF",
+    "JERARQUIA",
+    "MARCA CODIGO",
+    "FABRICANTE CODIGO",
+    "GRUPO IMPUTACION CODIGO"
+  ],
+
+  "renombrar_columnas": {
+    "TEXTO BREBE CALCULADO (MAX 40)": "TEXTO BREVE",
+    "NPF CALCULADO (MAX 30)": "NPF"
+  },
+
+  "normalizar_texto": true,
+  "_normalizar_texto_nota": "Igual que Repuestos: todo el texto de salida queda sin espacios sobrantes, en MAYÚSCULAS y sin tildes (conserva la Ñ) -- por si el Excel de origen no recalculó TEXTO BREVE/NPF con el mismo casing que espera SAP.",
+
+  "reference_file": "data/reference/DiccionarioSAP.xlsx",
+  "reference_sheet": "cebe3.0",
+  "reference_text_columns": [
+    "COD_MARCA"
+  ],
+  "_reference_nota": "cebe3.0 reemplaza a data/reference/Unidades/centros_ampliacion.xlsx (más completo y con algunas correcciones -- ver diffs confirmados con Seba). Cubre VF00/VA00/VC00/VD00/VE00 (columna COD_SOCIEDAD).",
+  "reference_filter": {
+    "column": "AREA_LINEA_NEGOCIO",
+    "value": "Vta. Unidades Nuevas"
+  },
+
+  "key_input": "FABRICANTE CODIGO",
+  "key_reference": "COD_FABRICANTE",
+  "fallback_value": "F9999",
+  "_marca_match_nota": "Pedido de Seba: 'revisa la marca primero y después el fabricante'. cebe3.0 puede traer más de una fila con el mismo fabricante comodín F9999 para el mismo centro, una por cada marca sin fabricante propio catalogado (ej. VF03: MARCA='TODAS/OTRAS MARCAS' (cod 280) -> Categoría valoración 1150 'VEH. Otras Marcas'; MARCA='BASHAN' (cod 010) -> 1190 'Motos Otras Marcas'). Sin acotar primero por marca, el match por fabricante solo sería ambiguo en ese caso. Si la marca de la fila no tiene ninguna fila propia en la filial, cae al comodín de marca 280 antes de buscar por fabricante.",
+  "key_input_marca": "MARCA CODIGO",
+  "key_reference_marca": "COD_MARCA",
+  "fallback_value_marca": "280",
+  "filial_column": "COD_SOCIEDAD",
+
+  "output_columns_from_reference": [
+    "CENTRO",
+    "COD_CEBE",
+    "NOM_CODIGO_CEBE",
+    "COD_MARCA",
+    "CATVAL"
+  ],
+  "_cod_marca_nota": "COD_MARCA y CATVAL salen de la tabla de referencia (ya validada por Centro+Marca+Fabricante), no de 'MARCA CODIGO' tal cual tipeó el usuario -- ese campo ahora SÍ se usa para buscar (key_input_marca), pero el valor que se amplía a SAP es siempre el de la fila de referencia que matcheó. CATVAL reemplaza a config/categoria_valoracion.json para este tipo: ya viene resuelto por fila en cebe3.0, sin la ambigüedad vieja de 'OTRAS MARCAS podría ser auto o moto' (ver docs/categoria_valoracion_pendientes.md) porque ahora se distingue por marca antes de llegar al fabricante comodín.",
+
+  "_disponibilidad_nota": "Misma matriz que la de Modelos vieja (Centro x Fabricante, hoja 'Unidades' de Centros_UN_RP.xlsx) -- no depende de marca, no hace falta una nueva.",
+  "disponibilidad": {
+    "reference_file": "data/reference/Unidades/Centros_UN_RP.xlsx",
+    "sheet": "Unidades",
+    "valor_bloqueado": 0
+  },
+
+  "correlativo": {
+    "enabled": true,
+    "nombre": "material_global",
+    "column_name": "NUMERO MATERIAL",
+    "range_min": 1,
+    "range_max": 5000000
+  },
+  "_correlativo_nota": "Este número NO es el número de material SAP final -- es solo la clave que agrupa, dentro de esta ampliación, qué filas (un centro cada una) pertenecen al mismo material original (igual que ya hacía config/tipos/modelos.json con este mismo contador 'material_global'). El número SAP real (rango ZVEH 10000000-19999999 para VF00, ZCAM 30000000-39999999 para VA00) lo asigna salida_sap.aplicar_plantilla_sap() recién al generar el formato SAP, vía 'rango_correlativo_nombre' en config/salida_sap/zveh.json / zcam.json -- ver salida_sap.py:314 (agrupa por este NUMERO MATERIAL y pide uno nuevo del rango real por grupo).",
+
+  "validaciones": {
+    "campos_obligatorios": [
+      "FILIAL CODIGO",
+      "TIPO MATERIAL",
+      "TEXTO BREVE",
+      "NPF",
+      "GRUPO ARTICULO",
+      "NOMBRE JERARQUIA",
+      "NOMBRE MARCA",
+      "NOMBRE FABRICANTE",
+      "GRUPO IMPUTACION"
+    ],
+    "texto_breve_columna": "TEXTO BREVE",
+    "texto_breve_max_len": 40
+  },
+
+  "traduccion_nombres": [
+    {
+      "tipo": "mapa",
+      "columna_origen": "FILIAL CODIGO",
+      "columna_destino": "FILIAL CODIGO",
+      "mapa": {
+        "Maco Tattersall": "VA00",
+        "Tattersall Maquinarias": "VC00",
+        "Tattersall Multimaq": "VD00",
+        "Tattersall Industrial y Maquinarias": "VE00",
+        "Tattersall Automotriz": "VF00",
+        "VA00": "VA00",
+        "VC00": "VC00",
+        "VD00": "VD00",
+        "VE00": "VE00",
+        "VF00": "VF00"
+      },
+      "_nota": "Mismo mapa que config/tipos/modelos.json (confirmado por Seba). Este input es solo Vehículos y Camiones, en la práctica solo se usa VF00 (ZVEH) y VA00 (ZCAM), pero se deja completo por si algún día Maquinarias también vende 'camiones' bajo este mismo esquema."
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE MARCA",
+      "columna_destino": "MARCA CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
+      "diccionario_sheet": "Diccionario Marcas",
+      "col_nombre": "Descripción Marca",
+      "col_codigo": "Marca"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE FABRICANTE",
+      "columna_destino": "FABRICANTE CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
+      "diccionario_sheet": "Diccionario Fabricantes",
+      "col_nombre": "Fabricante externo",
+      "col_codigo": "Fabricante"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO ARTICULO",
+      "columna_destino": "GRUPO ARTICULO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
+      "diccionario_sheet": "Grupo de Articulos",
+      "col_nombre": "Descripción",
+      "col_codigo": "Grupo Artículo"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO IMPUTACION",
+      "columna_destino": "GRUPO IMPUTACION CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
+      "diccionario_sheet": "Diccionario GrupoImputacion",
+      "col_nombre": "descripcion Grupo",
+      "col_codigo": "codigo",
+      "_nota": "Antes 'Gr.imputación mat.' salía fijo en '52' (Unidad Nueva) en zveh.json/zcam.json/zmaq.json/zusa.json. Ahora el input trae su propio valor por fila (Motos=50, Cuatrimotos=51, Unidad Nueva=52, Unidad Usada=53, ver esa hoja) y sale de acá en vez de un default fijo."
+    },
+    {
+      "tipo": "jerarquia",
+      "columna_origen": "NOMBRE JERARQUIA",
+      "columna_destino": "JERARQUIA",
+      "diccionario_file": "data/reference/DiccionarioSAP.xlsx",
+      "diccionario_sheet": "jerarquia",
+      "col_texto_completo": "Texto Categoría",
+      "col_nivel1": "Nivel 1",
+      "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2",
+      "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3",
+      "ancho_nivel3": 8,
+      "_nota": "Antes salía de la hoja 'Diccionario Jerarquías' de plantilla_modelos.xlsx (~350 filas, solo vehículos). Ahora sale de DiccionarioSAP.xlsx hoja 'jerarquia' (~2096 filas, cubre Repuestos Y Unidades en una sola tabla maestra) -- verificado contra el ejemplo real: 'DONGFENG AUT. UNIDAD - GASOLINA - PICK-UP' -> '000170000200000003' calza exacto con Materiales - Tattersall Automotriz.xlsx."
+    }
+  ]
+}

@@ -4,14 +4,12 @@
   "tipo_material": "ZCAM",
   "bloque_confirmacion_sap": "ZCAM",
   "rango_correlativo_nombre": "zcam_material",
-  "categoria_valoracion": {
-    "grupo": "ZCAM"
-  },
   "grupo_de_compras_dinamico": "unidades",
   "canales_distribucion": [
     "20",
     "30"
   ],
+  "_campos_desde_ampliado_nota_nueva": "'Categoría valoración' y 'Gr.imputación mat.' pasan a venir de la fila ampliada (config/tipos/modelos_vehiculos_camiones.json) en vez de config/categoria_valoracion.json / un default fijo -- ver notas en ese tipo. Ya no se usa 'categoria_valoracion': {'grupo': 'ZCAM'} para este tipo.",
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
@@ -21,13 +19,15 @@
     "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
     "Grupo materiales 1": "COD_MARCA",
-    "Condición Almacenaje": "UNIDAD DE MEDIDA"
+    "Categoría valoración": "CATVAL",
+    "Gr.imputación mat.": "GRUPO IMPUTACION CODIGO"
   },
   "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM). Sector, Almacén, Perfil Pieza de Fabricante y los flags de 'Vista ...'/'Datos Basicos' salían solo evidenciados para ZMAQ, pero Seba confirmó que aplican igual a las tres plantillas de Modelos.",
   "defaults_confirmados_extra": {
     "Sector": "10",
     "Sujeto-lote": "X",
     "Almacén": "2000",
+    "Condición Almacenaje": "UN",
     "Perfil Pieza de Fabricante": "ZMP1",
     "Datos Basicos.1": "X ",
     "Datos Basicos.2": "X ",
@@ -42,7 +42,6 @@
     "Vista ventas Centro": "X ",
     "Vista clasificación": "X",
     "Clasificación Fiscal para el materi": "1",
-    "Gr.imputación mat.": "52",
     "Clasificación Fiscal para el material ZMWS": "0",
     "Precio Variable": "1"
   },

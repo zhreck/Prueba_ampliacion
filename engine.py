@@ -597,7 +597,11 @@ def _cargar_disponibilidad(cfg: dict) -> dict[tuple[str, str], float] | None:
 def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
     """Tipo que se muestra en el historial de correlativos: el tipo de
     ampliación + el tipo de material SAP de la fila (ej. 'repuestos · ZRP1')."""
-    col = {"repuestos": "TIPO MATERIAL REPUESTO", "modelos": "TIPO MATERIAL"}.get(tipo_id)
+    col = {
+        "repuestos": "TIPO MATERIAL REPUESTO",
+        "modelos": "TIPO MATERIAL",
+        "modelos_vehiculos_camiones": "TIPO MATERIAL",
+    }.get(tipo_id)
     tipo_sap = str(fila_input.get(col, "")).strip() if col else ""
     return f"{tipo_id} · {tipo_sap}" if tipo_sap else tipo_id
 
@@ -620,6 +624,9 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     text_columns = cfg.get("text_columns", [])
     filial_column = cfg.get("filial_column")
     reference_filter = cfg.get("reference_filter")
+    key_input_marca = cfg.get("key_input_marca")
+    key_reference_marca = cfg.get("key_reference_marca")
+    fallback_value_marca = cfg.get("fallback_value_marca")
 
     if reference_filter:
         ref_df_completa = ref_df_completa[
@@ -683,6 +690,24 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
         if filial_column:
             filial_fila = str(fila_input.get("FILIAL CODIGO", "")).strip()
             ref_df = ref_df[ref_df[filial_column] == filial_fila]
+
+        if key_reference_marca:
+            # Acota también por MARCA antes de buscar por fabricante (pedido
+            # de Seba para Modelos: "revisa la marca primero y después el
+            # fabricante"). Necesario porque la tabla de referencia puede
+            # traer más de una fila con el mismo fabricante comodín F9999
+            # para el mismo centro, una por cada marca "no catalogada"
+            # (ej. VF03: MARCA='TODAS/OTRAS MARCAS' con Categoría valoración
+            # 1150 para autos, MARCA='BASHAN' con 1190 para motos) — sin este
+            # acote, el match sería ambiguo y podría tomar la fila que no
+            # corresponde. Si la marca de la fila no tiene ninguna fila
+            # propia en esta filial, cae al comodín de marca (fallback_value_marca,
+            # ej. "280" = TODAS/OTRAS MARCAS) antes de seguir con fabricante.
+            valor_marca = fila_input.get(key_input_marca)
+            ref_df_marca = ref_df[ref_df[key_reference_marca] == valor_marca]
+            if ref_df_marca.empty and fallback_value_marca:
+                ref_df_marca = ref_df[ref_df[key_reference_marca] == fallback_value_marca]
+            ref_df = ref_df_marca
 
         matches_crudos = ref_df[ref_df[key_ref] == valor_key]
         matches, centros_excluidos = _filtrar_por_disponibilidad(matches_crudos, valor_key)

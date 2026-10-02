@@ -2,6 +2,8 @@
   "id": "modelos",
   "nombre": "Modelo de Unidades",
   "descripcion": "Ampliación de vehículos/modelos nuevos a los centros SAP correspondientes según fabricante.",
+  "_oculto_nota": "Ocultado porque su input real (data/reference/Unidades/plantilla_modelos.xlsx) ya no existe -- Seba lo reemplazó por inputs separados por tipo de unidad. Vehículos y Camiones ya tiene el suyo (ver config/tipos/modelos_vehiculos_camiones.json). Maquinaria (ZMAQ) y Usados (ZUSA) siguen pendientes de su propio input nuevo; mientras tanto esta config queda oculta y sin poder usarse (fallaría con 'archivo de referencia no encontrado' si se accediera directo por URL).",
+  "oculto": true,
   "input_sheet": "INPUT",
   "input_columns": [
     "FILIAL CODIGO",
