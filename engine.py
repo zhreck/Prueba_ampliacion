@@ -73,13 +73,40 @@ def _formatear_costo(v):
 
 
 def listar_tipos() -> list[dict]:
-    tipos = []
+    """
+    Tipos para el selector de la web. Un tipo con "grupo" en su JSON (ej.
+    modelos_vehiculos_camiones y modelos_maquinaria, ambos "grupo": "modelos")
+    no aparece como tarjeta propia: se junta con los demás del mismo grupo
+    en UNA sola tarjeta (dict con "es_grupo": True y "miembros": [...]), para
+    que el selector muestre solo 2 botones (Modelos / Repuestos) en vez de
+    uno por cada tipo real — pedido de Seba.
+    """
+    resultado = []
+    grupos_por_id: dict[str, dict] = {}
     for f in sorted(TIPOS_DIR.glob("*.json")):
         with open(f, encoding="utf-8") as fh:
             cfg = json.load(fh)
         if cfg.get("oculto"):
             continue
-        tipos.append({
+
+        grupo_id = cfg.get("grupo")
+        if grupo_id:
+            grupo = grupos_por_id.get(grupo_id)
+            if grupo is None:
+                grupo = {
+                    "id": grupo_id,
+                    "nombre": cfg.get("grupo_nombre", grupo_id),
+                    "descripcion": cfg.get("grupo_descripcion", ""),
+                    "tiene_diccionario": False,
+                    "es_grupo": True,
+                    "miembros": [],
+                }
+                grupos_por_id[grupo_id] = grupo
+                resultado.append(grupo)
+            grupo["miembros"].append({"id": cfg["id"], "nombre": cfg["nombre"]})
+            continue
+
+        resultado.append({
             "id": cfg["id"],
             "nombre": cfg["nombre"],
             "descripcion": cfg.get("descripcion", ""),
@@ -89,8 +116,82 @@ def listar_tipos() -> list[dict]:
             # plural) ya trae todo en el mismo archivo de la plantilla — un
             # segundo botón sería redundante y confuso.
             "tiene_diccionario": bool(cfg.get("diccionario_referencia")),
+            "es_grupo": False,
         })
-    return tipos
+    return resultado
+
+
+def obtener_grupo(grupo_id: str) -> dict | None:
+    """Devuelve la tarjeta de grupo (con sus miembros) armada por
+    listar_tipos(), o None si grupo_id no es un grupo conocido."""
+    for t in listar_tipos():
+        if t.get("es_grupo") and t["id"] == grupo_id:
+            return t
+    return None
+
+
+def detectar_tipo_en_grupo(grupo_id: str, file_storage) -> str:
+    """
+    Para una página de carga compartida por varios tipos (ej. 'modelos':
+    Vehículos y Camiones + Maquinaria), detecta a cuál de los tipos miembro
+    corresponde el Excel subido mirando los encabezados de su hoja de
+    input — el usuario no tiene que elegir manualmente qué tipo es.
+
+    Funciona porque cada tipo tiene columnas propias que ningún otro
+    miembro del grupo usa (ej. 'CATEGORIA' solo en Maquinaria; 'TRACCION'
+    solo en Vehículos y Camiones): si el Excel subido trae TODAS las
+    columnas propias de un único miembro, es ese. Si no calza con ninguno,
+    o calza con más de uno (no debería pasar si las configs están bien
+    armadas), devuelve un error explícito en vez de adivinar.
+    """
+    grupo = obtener_grupo(grupo_id)
+    if not grupo:
+        raise TipoNoEncontradoError(f"No existe el grupo '{grupo_id}'.")
+
+    miembros = [cargar_config(m["id"]) for m in grupo["miembros"]]
+
+    try:
+        wb = openpyxl.load_workbook(file_storage, read_only=True, data_only=True)
+    except Exception as e:
+        raise InputInvalidoError(f"No se pudo leer el Excel: {e}")
+    finally:
+        file_storage.seek(0)
+
+    encabezados = None
+    for cfg in miembros:
+        hoja = cfg["input_sheet"]
+        if hoja in wb.sheetnames:
+            primera_fila = next(wb[hoja].iter_rows(min_row=1, max_row=1, values_only=True), ())
+            encabezados = {v for v in primera_fila if v}
+            break
+    if encabezados is None:
+        nombres = ", ".join(m["nombre"] for m in grupo["miembros"])
+        raise InputInvalidoError(
+            f"El archivo no tiene ninguna hoja de input reconocida para {grupo['nombre']} "
+            f"({nombres}) — ¿será de otro tipo de ampliación?"
+        )
+
+    candidatos = []
+    for cfg in miembros:
+        columnas_propias = set(cfg["input_columns"])
+        for otro in miembros:
+            if otro is not cfg:
+                columnas_propias -= set(otro["input_columns"])
+        if columnas_propias and columnas_propias.issubset(encabezados):
+            candidatos.append(cfg["id"])
+
+    if len(candidatos) == 1:
+        return candidatos[0]
+    nombres = ", ".join(m["nombre"] for m in grupo["miembros"])
+    if not candidatos:
+        raise InputInvalidoError(
+            f"No se reconoció qué tipo de planilla es ({nombres}). "
+            "Verifica que sea una plantilla descargada desde el sistema, sin columnas borradas."
+        )
+    raise InputInvalidoError(
+        f"El archivo calza con más de un tipo de planilla a la vez ({', '.join(candidatos)}) "
+        "— no se pudo determinar automáticamente cuál es."
+    )
 
 
 def cargar_config(tipo_id: str) -> dict:

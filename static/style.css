@@ -240,6 +240,31 @@ fieldset {
 
 .plantilla-link:hover { color: var(--accent); }
 
+.plantilla-links-grupo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 20px;
+}
+
+.plantilla-link-boton {
+  flex: 1 1 220px;
+  text-align: center;
+  padding: 11px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--accent);
+  color: var(--accent-hover);
+  background: var(--accent-bg);
+  font-weight: 600;
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.plantilla-link-boton:hover {
+  background: var(--accent-bg-strong);
+  color: var(--accent);
+}
+
 .dropzone {
   display: flex;
   flex-direction: column;

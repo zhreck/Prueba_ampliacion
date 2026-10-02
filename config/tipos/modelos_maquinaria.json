@@ -2,6 +2,10 @@
   "id": "modelos_maquinaria",
   "nombre": "Modelos - Maquinaria",
   "descripcion": "Ampliación de maquinaria nueva (Tattersall Maquinarias/Multimaq/Industrial, ZMAQ) a los centros SAP correspondientes según marca y fabricante.",
+  "grupo": "modelos",
+  "grupo_nombre": "Modelos",
+  "grupo_descripcion": "Ampliación de vehículos, camiones y maquinaria nuevos a los centros SAP correspondientes. El sistema reconoce solo mirando el Excel qué tipo de planilla subiste.",
+  "_grupo_nota": "Comparte una sola página de carga con modelos_vehiculos_camiones.json (pedido de Seba: 2 botones nomás en el selector). Ver engine.listar_tipos()/obtener_grupo()/detectar_tipo_en_grupo().",
 
   "input_sheet": "INPUT",
   "plantilla_desde_archivo": {

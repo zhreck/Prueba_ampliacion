@@ -39,6 +39,14 @@ def index():
 
 @app.route("/ampliar/<tipo_id>", methods=["GET"])
 def ampliar(tipo_id):
+    # tipo_id puede ser un grupo (ej. "modelos": Vehículos y Camiones +
+    # Maquinaria comparten una sola página de carga, con un botón de
+    # plantilla por miembro pero un solo campo de archivo — el sistema
+    # detecta solo qué tipo es al subirlo, ver engine.detectar_tipo_en_grupo).
+    grupo = engine.obtener_grupo(tipo_id)
+    if grupo:
+        return render_template("index_grupo.html", grupo=grupo)
+
     try:
         cfg = engine.cargar_config(tipo_id)
     except engine.TipoNoEncontradoError as e:
@@ -132,6 +140,18 @@ def procesar():
     if not archivo or archivo.filename == "":
         flash("Sube un archivo Excel con el input.", "error")
         return volver
+
+    # tipo_id puede venir como un grupo (la página de carga compartida de
+    # Modelos) en vez de un tipo real — detectar cuál es mirando el Excel
+    # antes de procesar. archivo.seek(0) después para que engine.procesar()
+    # lo lea desde el principio.
+    if engine.obtener_grupo(tipo_id):
+        try:
+            tipo_id = engine.detectar_tipo_en_grupo(tipo_id, archivo)
+        except (engine.TipoNoEncontradoError, engine.InputInvalidoError) as e:
+            flash(str(e), "error")
+            return volver
+        archivo.seek(0)
 
     try:
         resultado_df = engine.procesar(tipo_id, archivo)

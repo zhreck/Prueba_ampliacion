@@ -2,6 +2,10 @@
   "id": "modelos_vehiculos_camiones",
   "nombre": "Modelos - Vehículos y Camiones",
   "descripcion": "Ampliación de vehículos y camiones nuevos (Tattersall Automotriz/ZVEH, Maco Tattersall/ZCAM) a los centros SAP correspondientes según marca y fabricante.",
+  "grupo": "modelos",
+  "grupo_nombre": "Modelos",
+  "grupo_descripcion": "Ampliación de vehículos, camiones y maquinaria nuevos a los centros SAP correspondientes. El sistema reconoce solo mirando el Excel qué tipo de planilla subiste.",
+  "_grupo_nota": "Comparte una sola página de carga con modelos_maquinaria.json (pedido de Seba: 2 botones nomás en el selector). Ver engine.listar_tipos()/obtener_grupo()/detectar_tipo_en_grupo().",
   "_nota_general": "Reemplaza al input viejo de Modelos (plantilla_modelos.xlsx, retirado) solo para Vehículos y Camiones. Maquinaria (ZMAQ) y Usados (ZUSA) quedan pendientes de su propio input nuevo -- ver config/tipos/modelos.json (oculto mientras tanto).",
 
   "input_sheet": "INPUT",
