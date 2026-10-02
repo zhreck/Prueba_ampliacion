@@ -1,0 +1,181 @@
+{
+  "id": "modelos_maquinaria",
+  "nombre": "Modelos - Maquinaria",
+  "descripcion": "Ampliación de maquinaria nueva (Tattersall Maquinarias/Multimaq/Industrial, ZMAQ) a los centros SAP correspondientes según marca y fabricante.",
+
+  "input_sheet": "INPUT",
+  "plantilla_desde_archivo": {
+    "reference_file": "data/reference/Unidades/plantilla_modelos_maquinarias.xlsx",
+    "sheet": "INPUT"
+  },
+  "_plantilla_desde_archivo_nota": "Mismo esquema que config/tipos/modelos_vehiculos_camiones.json (ver sus notas): Texto breve/NPF ya vienen calculados por fórmula de Excel, el motor solo lee el valor cacheado. Acá no hay Cilindrada/Tracción/Transmisión/Potencia batería -- en su lugar hay 'CATEGORIA' (tipo de máquina: GRUA, EXCAVADORA, RETROEXCAVADORA, ...), que tampoco usa el motor (solo alimenta la fórmula de Excel).",
+
+  "input_columns": [
+    "FILIAL CODIGO",
+    "TIPO MATERIAL",
+    "TEXTO BREBE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "MODELO",
+    "CATEGORIA",
+    "COMBUSTIBLE",
+    "GRUPO ARTICULO",
+    "NOMBRE JERARQUIA",
+    "NOMBRE MARCA",
+    "NOMBRE FABRICANTE",
+    "GRUPO IMPUTACION",
+    "DECIMALES CILINDRADA (1 o 2)",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+
+  "columnas_formula": [
+    "TEXTO BREBE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+
+  "text_columns": [
+    "NPF",
+    "JERARQUIA",
+    "MARCA CODIGO",
+    "FABRICANTE CODIGO",
+    "GRUPO IMPUTACION CODIGO"
+  ],
+
+  "renombrar_columnas": {
+    "TEXTO BREBE CALCULADO (MAX 40)": "TEXTO BREVE",
+    "NPF CALCULADO (MAX 30)": "NPF"
+  },
+
+  "reference_file": "data/reference/DiccionarioSAP.xlsx",
+  "reference_sheet": "cebe3.0",
+  "reference_text_columns": [
+    "COD_MARCA"
+  ],
+  "_reference_nota": "cebe3.0 cubre VC00/VD00/VE00 igual que Vehículos y Camiones cubre VF00/VA00.",
+  "reference_filter": {
+    "column": "AREA_LINEA_NEGOCIO",
+    "value": ["Vta. Unidades Nuevas", "Vta. Electromovilidad Unidades Nuevas"]
+  },
+  "_reference_filter_nota": "A diferencia de Vehículos y Camiones, acá el valor es una LISTA: algunas marcas comodín de maquinaria eléctrica (ej. grúas ASILE MASTER/020, COMBILIFT/030 con fabricante F9999) SOLO tienen fila en cebe3.0 bajo 'Vta. Electromovilidad Unidades Nuevas', nunca bajo el 'Vta. Unidades Nuevas' genérico -- verificado contra el ejemplo real (material 20000000, GRUA 20S BEV).",
+
+  "key_input": "FABRICANTE CODIGO",
+  "key_reference": "COD_FABRICANTE",
+  "fallback_value": "F9999",
+  "key_input_marca": "MARCA CODIGO",
+  "key_reference_marca": "COD_MARCA",
+  "fallback_value_marca": "280",
+  "filial_column": "COD_SOCIEDAD",
+
+  "output_columns_from_reference": [
+    "CENTRO",
+    "COD_CEBE",
+    "NOM_CODIGO_CEBE",
+    "COD_MARCA",
+    "CATVAL"
+  ],
+
+  "disponibilidad": {
+    "reference_file": "data/reference/Unidades/Centros_UN_RP.xlsx",
+    "sheet": "Unidades",
+    "valor_bloqueado": 0
+  },
+
+  "correlativo": {
+    "enabled": true,
+    "nombre": "material_global",
+    "column_name": "NUMERO MATERIAL",
+    "range_min": 1,
+    "range_max": 5000000
+  },
+  "_correlativo_nota": "Mismo contador compartido (solo clave de agrupación interna, no el número SAP final) que config/tipos/modelos_vehiculos_camiones.json -- ver su nota, aplica igual acá.",
+
+  "validaciones": {
+    "campos_obligatorios": [
+      "FILIAL CODIGO",
+      "TIPO MATERIAL",
+      "TEXTO BREVE",
+      "NPF",
+      "GRUPO ARTICULO",
+      "NOMBRE JERARQUIA",
+      "NOMBRE MARCA",
+      "NOMBRE FABRICANTE",
+      "GRUPO IMPUTACION"
+    ],
+    "texto_breve_columna": "TEXTO BREVE",
+    "texto_breve_max_len": 40
+  },
+
+  "normalizar_texto": true,
+
+  "traduccion_nombres": [
+    {
+      "tipo": "mapa",
+      "columna_origen": "FILIAL CODIGO",
+      "columna_destino": "FILIAL CODIGO",
+      "mapa": {
+        "Maco Tattersall": "VA00",
+        "Tattersall Maquinarias": "VC00",
+        "Tattersall Multimaq": "VD00",
+        "Tattersall Industrial y Maquinarias": "VE00",
+        "Tattersall Automotriz": "VF00",
+        "VA00": "VA00",
+        "VC00": "VC00",
+        "VD00": "VD00",
+        "VE00": "VE00",
+        "VF00": "VF00"
+      }
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE MARCA",
+      "columna_destino": "MARCA CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_maquinarias.xlsx",
+      "diccionario_sheet": "Diccionario Marcas",
+      "col_nombre": "Descripción Marca",
+      "col_codigo": "Marca"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE FABRICANTE",
+      "columna_destino": "FABRICANTE CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_maquinarias.xlsx",
+      "diccionario_sheet": "Diccionario Fabricantes",
+      "col_nombre": "Fabricante externo",
+      "col_codigo": "Fabricante"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO ARTICULO",
+      "columna_destino": "GRUPO ARTICULO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_maquinarias.xlsx",
+      "diccionario_sheet": "Grupo de Articulos",
+      "col_nombre": "Descripción",
+      "col_codigo": "Grupo Artículo"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO IMPUTACION",
+      "columna_destino": "GRUPO IMPUTACION CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos_maquinarias.xlsx",
+      "diccionario_sheet": "Diccionario GrupoImputacion",
+      "col_nombre": "descripcion Grupo",
+      "col_codigo": "codigo"
+    },
+    {
+      "tipo": "jerarquia",
+      "columna_origen": "NOMBRE JERARQUIA",
+      "columna_destino": "JERARQUIA",
+      "diccionario_file": "data/reference/DiccionarioSAP.xlsx",
+      "diccionario_sheet": "jerarquia",
+      "col_texto_completo": "Texto Categoría",
+      "col_nivel1": "Nivel 1",
+      "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2",
+      "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3",
+      "ancho_nivel3": 8
+    }
+  ]
+}

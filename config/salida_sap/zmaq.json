@@ -4,14 +4,12 @@
   "tipo_material": "ZMAQ",
   "bloque_confirmacion_sap": "ZMAQ_ttm",
   "rango_correlativo_nombre": "zmaq_material",
-  "categoria_valoracion": {
-    "grupo": "ZMAQ"
-  },
   "grupo_de_compras_dinamico": "unidades",
   "canales_distribucion": [
-    "20",
     "30"
   ],
+  "_canal_nota": "Antes 20+30 (como Vehículos/Camiones). Corregido a solo '30' -- confirmado tanto por el ejemplo real (los 1506 filas de Materiales - Tattersall Maquinarias.xlsx vienen todas con canal 30, ninguna con 20) como por la nota de negocio en DiccionarioSAP.xlsx/Consolidado: 'Para maquinarias el canal que tiene que ir es solamente 30 y para vehiculos y camiones tiene que ir el 20 y 30'.",
+  "_campos_desde_ampliado_nota_nueva": "'Categoría valoración' y 'Gr.imputación mat.' pasan a venir de la fila ampliada (config/tipos/modelos_maquinaria.json) en vez de config/categoria_valoracion.json / un default fijo -- mismo cambio que zveh.json/zcam.json.",
   "campos_desde_ampliado": {
     "Centro": "CENTRO",
     "Texto breve material (40)": "TEXTO BREVE",
@@ -21,13 +19,15 @@
     "Número de Pieza de Fabricante (NPF)": "NPF",
     "Centro de beneficio": "COD_CEBE",
     "Grupo materiales 1": "COD_MARCA",
-    "Condición Almacenaje": "UNIDAD DE MEDIDA"
+    "Categoría valoración": "CATVAL",
+    "Gr.imputación mat.": "GRUPO IMPUTACION CODIGO"
   },
   "_defaults_confirmados_extra_nota": "Los flags de 'Vista ...', Sector, Sujeto-lote, Canal distribución y Perfil Pieza de Fabricante salen de docs/ejemplo_output_ZMAQ_VC00.xlsx (salida real). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat., Precio Variable y (solo acá, para TTM) Grupo de compras fueron confirmados directamente por Seba en arreglos_notas.txt.",
   "defaults_confirmados_extra": {
     "Sector": "10",
     "Sujeto-lote": "X",
     "Almacén": "2000",
+    "Condición Almacenaje": "UN",
     "Perfil Pieza de Fabricante": "ZMP1",
     "Datos Basicos.1": "X ",
     "Datos Basicos.2": "X ",
@@ -42,7 +42,6 @@
     "Vista ventas Centro": "X ",
     "Vista clasificación": "X",
     "Clasificación Fiscal para el materi": "1",
-    "Gr.imputación mat.": "52",
     "Clasificación Fiscal para el material ZMWS": "0",
     "Precio Variable": "1"
   },

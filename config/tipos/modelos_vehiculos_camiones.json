@@ -11,6 +11,14 @@
   },
   "_plantilla_desde_archivo_nota": "El 'Texto breve' y el 'NPF' ya NO se calculan acá: el input real los trae calculados por fórmulas de Excel (LET/XLOOKUP/REDUCE) a partir de Modelo/Versión/Cilindrada/Combustible/Tracción/Transmisión/Potencia batería, y Excel deja el VALOR ya calculado guardado en la celda -- pandas lee ese valor cacheado, no la fórmula. El resto de las columnas (Modelo, Versión, Cilindrada, ...) solo existen para que esas fórmulas funcionen en Excel; el motor no las usa para nada.",
 
+  "columnas_formula": [
+    "TEXTO BREBE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+  "_columnas_formula_nota": "Estas 4 columnas traen fórmula en las 200 filas del archivo real (no solo en la fila de ejemplo) -- generar_plantilla_vacia() ya NO las borra al armar la plantilla descargable, para que el usuario vea en vivo cómo queda el Texto breve/NPF a medida que llena Modelo/Versión/Combustible/etc. en cada fila. La hoja además queda protegida (Protect Sheet) dejando editables solo las columnas que no son de fórmula, para que no se puedan borrar/pisar por accidente.",
+
   "input_columns": [
     "FILIAL CODIGO",
     "TIPO MATERIAL",

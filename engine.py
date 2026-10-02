@@ -21,6 +21,7 @@ import openpyxl
 import pandas as pd
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.styles import Protection
 
 import correlativo
 
@@ -128,9 +129,28 @@ def generar_plantilla_vacia(tipo_id: str, filas_vacias: int = 200) -> "openpyxl.
         # Borra los valores de las filas de ejemplo (fila 2 en adelante) sin
         # tocar formato, anchos de columna ni validaciones — esas quedan
         # intactas porque son propiedades de la hoja/rango, no de la celda.
-        for fila in ws.iter_rows(min_row=2, max_row=max(ws.max_row, filas_vacias + 1)):
+        # "columnas_formula" (ej. Modelos: Texto breve/NPF calculados) son la
+        # excepción: ahí NO se borra la fórmula, porque el archivo real ya la
+        # trae repetida en las 200 filas (Seba pidió que el usuario vea cómo
+        # va a quedar el Texto breve/NPF a medida que llena cada fila).
+        ultima_fila = max(ws.max_row, filas_vacias + 1)
+        columnas_formula = set(cfg.get("columnas_formula", []))
+        encabezados = {c: ws.cell(row=1, column=c).value for c in range(1, ws.max_column + 1)}
+        for fila in ws.iter_rows(min_row=2, max_row=ultima_fila):
             for celda in fila:
+                if encabezados.get(celda.column) in columnas_formula:
+                    continue
                 celda.value = None
+        if columnas_formula:
+            # Protege la hoja para que el usuario no borre/edite las fórmulas
+            # ni la estructura de la plantilla — solo quedan editables las
+            # columnas que no son de fórmula (las que sí tiene que llenar).
+            for col_idx, nombre_col in encabezados.items():
+                if nombre_col in columnas_formula:
+                    continue
+                for fila_idx in range(2, ultima_fila + 1):
+                    ws.cell(row=fila_idx, column=col_idx).protection = Protection(locked=False)
+            ws.protection.sheet = True
         # Las hojas de diccionario del archivo real ya vienen con formato
         # correcto — no hace falta reconstruirlas con _agregar_hoja_diccionario.
         for nombre_col in cfg.get("columnas_excluir_plantilla", []):
@@ -601,6 +621,7 @@ def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
         "repuestos": "TIPO MATERIAL REPUESTO",
         "modelos": "TIPO MATERIAL",
         "modelos_vehiculos_camiones": "TIPO MATERIAL",
+        "modelos_maquinaria": "TIPO MATERIAL",
     }.get(tipo_id)
     tipo_sap = str(fila_input.get(col, "")).strip() if col else ""
     return f"{tipo_id} · {tipo_sap}" if tipo_sap else tipo_id
@@ -629,9 +650,21 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     fallback_value_marca = cfg.get("fallback_value_marca")
 
     if reference_filter:
-        ref_df_completa = ref_df_completa[
-            ref_df_completa[reference_filter["column"]] == reference_filter["value"]
-        ]
+        valor_filtro = reference_filter["value"]
+        if isinstance(valor_filtro, list):
+            # Maquinaria: "Vta. Unidades Nuevas" y "Vta. Electromovilidad
+            # Unidades Nuevas" son dos valores de AREA_LINEA_NEGOCIO que
+            # ambos cuentan como unidades nuevas (electromovilidad es el
+            # mismo negocio, separado solo para reporting) — algunas marcas
+            # comodín (ej. ASILE MASTER/020) SOLO tienen fila bajo el valor
+            # de electromovilidad, nunca bajo el genérico.
+            ref_df_completa = ref_df_completa[
+                ref_df_completa[reference_filter["column"]].isin(valor_filtro)
+            ]
+        else:
+            ref_df_completa = ref_df_completa[
+                ref_df_completa[reference_filter["column"]] == valor_filtro
+            ]
 
     disponibilidad = _cargar_disponibilidad(cfg)
     bloqueado_valor = cfg.get("disponibilidad", {}).get("valor_bloqueado", 0)
