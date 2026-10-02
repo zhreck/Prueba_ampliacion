@@ -37,11 +37,15 @@ Reglas universales (no dependen de la plantilla, aplican siempre):
   "Jerarquía productos\\n MARA-PRDHA\\nReplicar en\\nMVKE-PRODH". Esto SÍ está resuelto
   en confirmacion_campos_parsed.json (nota: "Tomar el dato que se registró en
   MARA-PRDHA"), aunque el parser lo haya agrupado bajo needs_review_or_lookup.
-- "Categoría Clase", "Clase", "Unidad medida pedido" y "Unidad med.salida" quedan
-  SIEMPRE vacíos, para las tres plantillas. Seba confirmó esto directamente
-  (arreglos_notas.txt) y pisa
-  lo que dice confirmacion_campos_parsed.json (que trae "300"/"ZMAQUINAS"/"UN" en
-  "defaults" para estos campos) — el ejemplo real de ZMAQ ya los traía vacíos.
+- "Categoría Clase", "Clase", "Unidad medida pedido" y "Unidad med.salida": el
+  valor "300"/"ZMAQUINAS"/"UN" que trae confirmacion_campos_parsed.json en
+  "defaults" para estos campos se ignora SIEMPRE (CAMPOS_FORZAR_VACIO, pisa el
+  paso 1 de _generar_fila_sap) porque viene mal copiado entre bloques (ej.
+  aparecía también bajo ZVEH). Quedan vacíos salvo que la plantilla de esa
+  filial (config/salida_sap/<tipo>.json) los defina ella misma en
+  "defaults_confirmados_extra" (paso 2, no se filtra) — hoy solo zmaq.json lo
+  hace, confirmado por Seba contra el ejemplo real: "Categoría Clase"="300",
+  "Clase"="ZMAQUINAS" SOLO en Maquinaria, ZVEH/ZCAM los siguen dejando vacíos.
 
 ZRP1/ZRP3 (Repuestos, normal/seriado) no tienen bloque en
 confirmacion_campos_parsed.json — no existe un confirmacionCampos.xlsx
@@ -416,6 +420,52 @@ def escribir_hoja_sap_repuestos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, t
 
     ws = wb.create_sheet(title=titulo)
     engine._clonar_hoja(ws_origen, ws, max_filas=FILAS_ENCABEZADO_REPUESTOS)
+    fila_destino = FILAS_ENCABEZADO_REPUESTOS + 1
+    for fila in df_sap.itertuples(index=False):
+        for col_idx, valor in enumerate(fila, start=1):
+            ws.cell(row=fila_destino, column=col_idx, value=valor)
+        fila_destino += 1
+
+
+# Mismo layout que Repuestos (título/grupos/header/obligatorio/defaults en las
+# primeras 5 filas, datos desde la fila 6) pero un archivo de referencia por
+# tipo de material -- las 5 filas de cada uno difieren un poco entre sí (la
+# nota de "Valor por Defecto" menciona el tipo propio, y el de ZMAQ trae
+# además el rango de número de material) -- ver engine.generar_plantilla_vacia
+# y el hallazgo de Seba: la planilla que bajaba el usuario quedaba con los
+# datos desde la fila 2 (un to_excel() genérico) en vez de calzar con el
+# formato real que él mismo entregó de ejemplo.
+PLANILLA_CARGA_MODELOS = {
+    "ZVEH": (BASE_DIR / "data" / "reference" / "Unidades" / "Materiales - Tattersall Automotriz.xlsx", "TAU"),
+    "ZCAM": (BASE_DIR / "data" / "reference" / "Unidades" / "Materiales - Tattersall Maco.xlsx", "MTT"),
+    "ZMAQ": (BASE_DIR / "data" / "reference" / "Unidades" / "Materiales - Tattersall Maquinarias.xlsx", "TTMM"),
+}
+FILAS_ENCABEZADO_MODELOS = 5
+
+
+def escribir_hoja_sap_modelos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, tipo_material: str) -> None:
+    """
+    Igual que escribir_hoja_sap_repuestos pero para Modelos (ZVEH/ZCAM/ZMAQ):
+    clona las primeras 5 filas del ejemplo real de ESE tipo de material
+    (PLANILLA_CARGA_MODELOS) y agrega los datos generados desde la fila 6.
+    """
+    origen = PLANILLA_CARGA_MODELOS.get(tipo_material)
+    if not origen:
+        raise FormatoSAPError(
+            f"No hay plantilla de referencia de salida real para '{tipo_material}' "
+            f"(ver PLANILLA_CARGA_MODELOS en salida_sap.py)."
+        )
+    ruta, nombre_hoja = origen
+    wb_origen = openpyxl.load_workbook(ruta, data_only=True)
+    ws_origen = wb_origen[nombre_hoja]
+
+    ws = wb.create_sheet(title=tipo_material)
+    engine._clonar_hoja(ws_origen, ws, max_filas=FILAS_ENCABEZADO_MODELOS)
+    fila_destino = FILAS_ENCABEZADO_MODELOS + 1
+    for fila in df_sap.itertuples(index=False):
+        for col_idx, valor in enumerate(fila, start=1):
+            ws.cell(row=fila_destino, column=col_idx, value=valor)
+        fila_destino += 1
 
     fila_destino = FILAS_ENCABEZADO_REPUESTOS + 1
     for fila in df_sap.itertuples(index=False):

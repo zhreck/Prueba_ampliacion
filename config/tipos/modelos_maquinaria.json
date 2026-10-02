@@ -32,6 +32,17 @@
     "LARGO NPF (máx 30)"
   ],
 
+  "validaciones_lista_extra": [
+    { "columna": "FILIAL CODIGO", "rango": "'Diccionario Filiales'!$B$5:$B$7" },
+    { "columna": "TIPO MATERIAL", "rango": "NPF!$L$6" },
+    { "columna": "CATEGORIA", "rango": "NPF!$G$4:$G$23" },
+    { "columna": "COMBUSTIBLE", "rango": "NPF!$A$4:$A$10" },
+    { "columna": "GRUPO ARTICULO", "rango": "'Grupo de Articulos'!$B$4" },
+    { "columna": "GRUPO IMPUTACION", "rango": "'Diccionario GrupoImputacion'!$B$4" },
+    { "columna": "NOMBRE JERARQUIA", "rango": "'Diccionario Jerarquías'!$F$2:$F$147" }
+  ],
+  "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14) del archivo original plantilla_modelos_maquinarias.xlsx. GRUPO ARTICULO y GRUPO IMPUTACION quedan fijas a una sola opción (MAQ. INDUSTRIAL / Unidad Nueva) porque así venía el archivo original -- más angosto que lo que el diccionario completo permitiría (ver traduccion_nombres), pero es lo correcto para Maquinaria. NOMBRE JERARQUIA ver nota equivalente en modelos_vehiculos_camiones.json.",
+
   "columnas_formula": [
     "TEXTO BREBE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",

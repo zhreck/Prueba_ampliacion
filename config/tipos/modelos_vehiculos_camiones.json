@@ -15,6 +15,17 @@
   },
   "_plantilla_desde_archivo_nota": "El 'Texto breve' y el 'NPF' ya NO se calculan acá: el input real los trae calculados por fórmulas de Excel (LET/XLOOKUP/REDUCE) a partir de Modelo/Versión/Cilindrada/Combustible/Tracción/Transmisión/Potencia batería, y Excel deja el VALOR ya calculado guardado en la celda -- pandas lee ese valor cacheado, no la fórmula. El resto de las columnas (Modelo, Versión, Cilindrada, ...) solo existen para que esas fórmulas funcionen en Excel; el motor no las usa para nada.",
 
+  "validaciones_lista_extra": [
+    { "columna": "FILIAL CODIGO", "rango": "'Diccionario Filiales'!$B$2:$B$4" },
+    { "columna": "TIPO MATERIAL", "rango": "NPF!$O$5:$O$6" },
+    { "columna": "COMBUSTIBLE", "rango": "NPF!$A$4:$A$10" },
+    { "columna": "TRACCION", "rango": "NPF!$J$4:$J$10" },
+    { "columna": "TRANSMISION", "rango": "NPF!$D$4:$D$7" },
+    { "columna": "DECIMALES CILINDRADA (1 o 2)", "rango": "NPF!$U$4:$U$5" },
+    { "columna": "NOMBRE JERARQUIA", "rango": "'Diccionario Jerarquías'!$F$2:$F$350" }
+  ],
+  "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14, que openpyxl descarta al abrir -- ver nota en engine._agregar_validaciones_desde_traduccion) del archivo original plantilla_modelos_ZVEH_ZCAM.xlsx. NOMBRE JERARQUIA apunta a la hoja 'Diccionario Jerarquías' BUNDLEADA en la plantilla (no a DiccionarioSAP.xlsx, que no viaja con el archivo descargable) -- el motor igual valida contra la tabla completa de DiccionarioSAP.xlsx al procesar, así que un texto que no calce ahí se rechaza con aviso en vez de generar algo mal.",
+
   "columnas_formula": [
     "TEXTO BREBE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",

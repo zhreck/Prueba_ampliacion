@@ -181,17 +181,20 @@ def procesar():
 
             try:
                 # Repuestos: "Serie o Lote?" define ZRP1/ZRP2/ZRP3 (columna
-                # "TIPO MATERIAL REPUESTO", ya traducida por engine.py).
-                # Modelo de Unidades: la columna "TIPO MATERIAL" del input
-                # (ZVEH/ZMAQ/ZCAM/ZUSA) define plantilla y rango. En ambos
-                # casos puede haber una mezcla de tipos en el mismo archivo,
-                # y cada tipo sale en su propia hoja.
+                # "TIPO MATERIAL REPUESTO", ya traducida por engine.py) — puede
+                # haber una mezcla de los 3 en el mismo archivo, cada uno sale
+                # en su propia hoja. Modelos (Vehículos/Camiones, Maquinaria):
+                # la columna "TIPO MATERIAL" del input es solo una categoría
+                # para la fórmula de Excel (CAMIONES/VEHICULOS/ZMAQ), NO el
+                # tipo de material SAP real — ese sale de la FILIAL (ver
+                # FILIAL_A_TIPO_MATERIAL), que ya se validó como única más
+                # arriba, así que acá hay un solo tipo de material por archivo.
                 if tipo_id == "repuestos":
                     col_tipo_sap = "TIPO MATERIAL REPUESTO"
                     tipos_sap = ("ZRP1", "ZRP2", "ZRP3")
                 else:
-                    col_tipo_sap = "TIPO MATERIAL"
-                    tipos_sap = tuple(dict.fromkeys(resultado_df[col_tipo_sap]))
+                    col_tipo_sap = None
+                    tipos_sap = (salida_sap.filial_a_tipo_material(filial),)
                 partes_sap_por_tipo = {}
                 pendientes = {}
                 obligatorios_vacios = []
@@ -200,7 +203,7 @@ def procesar():
                 npf_largos = []
                 npf_duplicados = []
                 for tipo_material_sap in tipos_sap:
-                    subset = resultado_df[resultado_df[col_tipo_sap] == tipo_material_sap]
+                    subset = resultado_df if col_tipo_sap is None else resultado_df[resultado_df[col_tipo_sap] == tipo_material_sap]
                     if subset.empty:
                         continue
                     if tipo_id == "repuestos" and tipo_material_sap != "ZRP1":
@@ -270,6 +273,22 @@ def procesar():
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
         salida_sap.escribir_hoja_sap_repuestos(wb, pd.concat(list(partes_sap_por_tipo.values()), ignore_index=True))
+        if df_pendientes is not None:
+            ws_pend = wb.create_sheet(title="PENDIENTES")
+            ws_pend.append(list(df_pendientes.columns))
+            for fila in df_pendientes.itertuples(index=False):
+                ws_pend.append(list(fila))
+        wb.save(buffer)
+    elif generar_sap and tipo_id in ("modelos_vehiculos_camiones", "modelos_maquinaria"):
+        # Mismo motivo que Repuestos arriba: el archivo real que Seba entregó
+        # de ejemplo (Materiales - Tattersall Automotriz/Maco/Maquinarias.xlsx)
+        # trae encabezados hasta la fila 5 y datos desde la 6 — antes de este
+        # cambio se generaba con un to_excel() genérico (header fila 1, datos
+        # desde la 2), sin colores ni el layout real.
+        wb = openpyxl.Workbook()
+        wb.remove(wb.active)
+        for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
+            salida_sap.escribir_hoja_sap_modelos(wb, df_parte, tipo_material_sap)
         if df_pendientes is not None:
             ws_pend = wb.create_sheet(title="PENDIENTES")
             ws_pend.append(list(df_pendientes.columns))

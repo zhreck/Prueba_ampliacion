@@ -312,17 +312,51 @@ def _agregar_validaciones_desde_traduccion(wb: "openpyxl.Workbook", ws, cfg: dic
     Columnas que ya traían una validación funcionando en el archivo
     original (Serie o Lote?, Unidad Medida, Moneda) no se tocan. Una que
     esté rota (ej. la de Marca/Fabricante venía con "#REF!", una referencia
-    perdida del archivo original) se reemplaza por una que sí funciona.
+    perdida del archivo original; o vacía/sin tipo — ver nota abajo) se
+    reemplaza por una que sí funciona.
+
+    "validaciones_lista_extra" (Modelos) cubre columnas con lista propia
+    que NO vienen de "traduccion_nombres" (ej. Combustible, Transmisión,
+    Categoría de Maquinaria — solo alimentan la fórmula de Excel, el motor
+    no las traduce) y también sirve para ACOTAR una lista que
+    "traduccion_nombres" generaría más amplia de lo que de verdad aplica
+    (ej. Grupo de Artículo en Maquinaria: el diccionario tiene 4 opciones,
+    pero Maquinaria solo usa 1 — "MAQ. INDUSTRIAL"). Cada entrada es
+    {"columna": <nombre>, "rango": <referencia Excel lista para usar tal
+    cual en formula1, ej. "NPF!$A$4:$A$10">}, recuperado de la validación
+    real (tipo x14, ver nota siguiente) del archivo original.
     """
     columnas = cfg["input_columns"]
 
+    # Los archivos reales de Modelos (Vehículos/Camiones, Maquinaria) traen
+    # sus listas desplegables como validación "x14" (la versión nueva del
+    # formato, con alcance condicional/rangos con nombre) — openpyxl NO la
+    # soporta y la descarta al abrir el archivo (UserWarning: "Data
+    # Validation extension is not supported and will be removed"), dejando
+    # a veces un objeto de validación vacío (type=None) en su lugar. Si se
+    # contara ese objeto vacío como "ya tiene su propia validación", la
+    # columna se quedaba SIN ninguna lista en la plantilla descargable (el
+    # bug que reportó Seba) — por eso acá solo cuenta una validación de
+    # verdad (type="list" con una fórmula), y cualquier otra (vacía o
+    # "#REF!") se saca de la hoja.
     columnas_con_validacion_propia = set()
     for dv in list(ws.data_validations.dataValidation):
-        if str(dv.formula1) == "#REF!":
+        if dv.type != "list" or not dv.formula1 or str(dv.formula1) == "#REF!":
             ws.data_validations.dataValidation.remove(dv)
             continue
         for rango in dv.sqref.ranges:
             columnas_con_validacion_propia.add(rango.min_col)
+
+    for extra in cfg.get("validaciones_lista_extra", []):
+        nombre_col = extra["columna"]
+        if nombre_col not in columnas:
+            continue
+        col_idx = columnas.index(nombre_col) + 1
+        letra = get_column_letter(col_idx)
+        dv = DataValidation(type="list", formula1=extra["rango"], allow_blank=True)
+        dv.add(f"{letra}2:{letra}1048576")
+        ws.add_data_validation(dv)
+        columnas_con_validacion_propia.add(col_idx)
 
     for regla in cfg.get("traduccion_nombres", []):
         col_origen = regla["columna_origen"]
