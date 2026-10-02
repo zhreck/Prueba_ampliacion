@@ -1,43 +1,41 @@
 {
   "id": "modelos",
-  "nombre": "Modelos",
+  "nombre": "Modelo de Unidades",
   "descripcion": "Ampliación de vehículos/modelos nuevos a los centros SAP correspondientes según fabricante.",
-  "_oculto_nota": "Ocultado temporalmente a pedido de Seba (arreglos_notas.txt) mientras se prueba Repuestos -- no aparece en el selector de la web. Para reactivarlo, borrar esta línea y la de 'oculto' abajo.",
-  "oculto": true,
-
   "input_sheet": "INPUT",
   "input_columns": [
     "FILIAL CODIGO",
+    "TIPO MATERIAL",
     "UNIDAD DE MEDIDA",
     "TEXTO BREVE",
+    "NPF",
     "GRUPO ARTICULO",
     "NOMBRE JERARQUIA",
     "JERARQUIA",
-    "MARCA CODIGO",
     "NOMBRE MARCA",
-    "FABRICANTE CODIGO",
-    "NOMBRE FABRICANTE",
-    "NPF",
-    "NPF:Fabricante"
+    "NOMBRE FABRICANTE"
   ],
-  
-  "text_columns": ["JERARQUIA", "MARCA CODIGO", "NPF:Fabricante", "COD_MARCA"],
-
+  "text_columns": [
+    "JERARQUIA",
+    "MARCA CODIGO",
+    "NPF",
+    "COD_MARCA"
+  ],
   "reference_file": "data/reference/Unidades/centros_ampliacion.xlsx",
   "reference_sheet": null,
-  "reference_text_columns": ["COD_MARCA"],
+  "reference_text_columns": [
+    "COD_MARCA"
+  ],
   "_reference_nota": "Tabla única confirmada por negocio, cubre VF00/VC00/VD00/VE00/VA00 (columna COD_SOCIEDAD). Reemplaza al symlink roto modelos_centros_ampliacion.xlsx que traía el repo. AREA_LINEA_NEGOCIO se filtra a 'Vta. Unidades Nuevas' por si en el futuro se agregan otras líneas de negocio a la misma tabla.",
   "reference_filter": {
     "column": "AREA_LINEA_NEGOCIO",
     "value": "Vta. Unidades Nuevas"
   },
-
   "key_input": "FABRICANTE CODIGO",
   "key_reference": "COD_FABRICANTE",
   "fallback_value": "F9999",
   "_filial_column_nota": "La tabla trae varias filiales mezcladas y un mismo COD_FABRICANTE (ej. F9999, el comodín) existe repetido para distintas filiales con centros/cebe totalmente distintos. Por eso el match SIEMPRE se acota primero por FILIAL CODIGO == COD_SOCIEDAD antes de buscar por fabricante — si no se hiciera, una fila de VC00 podría terminar ampliándose (también) a centros de VF00.",
   "filial_column": "COD_SOCIEDAD",
-
   "output_columns_from_reference": [
     "CENTRO",
     "COD_CEBE",
@@ -45,26 +43,111 @@
     "COD_MARCA"
   ],
   "_cod_marca_nota": "COD_MARCA sale de la tabla de referencia (ya validada por Centro+Fabricante), no del 'MARCA CODIGO' que tipea el usuario en el input — ese campo es solo de consulta (ver _diccionario_referencia_nota) y no siempre viene bien cargado. COD_MARCA reemplaza a MARCA CODIGO como fuente de 'Grupo materiales 1' en las plantillas SAP (config/salida_sap/*.json).",
-
   "_disponibilidad_nota": "Matriz Centro x Fabricante confirmada por negocio (hoja 'Unidades' de Centros_UN_RP.xlsx): 1 y 0.5 se tratan como habilitado (0.5 = por confirmar, negocio pidió tratarlo como 'sí va' por ahora), 0 = bloqueado, ese fabricante no tiene CEBE para ese centro y no puede generarse ahí aunque centros_ampliacion.xlsx tenga una fila (dato posiblemente mal cargado). Si el fabricante no aparece en esta matriz para ningún centro de la filial, se trata como fabricante nuevo/no catalogado y sigue el comportamiento normal (match o fallback a comodín). OJO: la hoja 'Unidades' no trae fila para VC03, VD03 ni VF07 (centros nuevos/aún no incorporados a esa matriz según sus propias notas) — para esos 3 centros puntuales esta validación no aplica todavía (no bloquea ni confirma nada), se comportan como antes de este cambio.",
   "disponibilidad": {
     "reference_file": "data/reference/Unidades/Centros_UN_RP.xlsx",
     "sheet": "Unidades",
     "valor_bloqueado": 0
   },
-
-  "_diccionario_referencia_nota": "Se adjunta como hoja extra en la plantilla descargable (/plantilla/modelos), para que el usuario tenga a mano los códigos válidos de marca/jerarquía al llenar el input. No se usa para procesar ni validar el input, solo es de consulta.",
-  "diccionario_referencia": {
-    "reference_file": "data/reference/Diccionario_marca_jerarquia.xlsx",
-    "sheet": "Diccionario",
-    "titulo_hoja": "DICCIONARIO_MARCA_JERARQUIA"
-  },
-
   "correlativo": {
     "enabled": true,
     "nombre": "material_global",
     "column_name": "NUMERO MATERIAL",
     "range_min": 1,
     "range_max": 5000000
+  },
+  "plantilla_desde_archivo": {
+    "reference_file": "data/reference/Unidades/plantilla_modelos.xlsx",
+    "sheet": "INPUT",
+    "hojas_excluir": [
+      "Diccionario Original-Alternativ"
+    ]
+  },
+  "_plantilla_desde_archivo_nota": "Input v2 (primer vistazo, el input final de Modelos todavía se puede ajustar): igual que Repuestos, la plantilla descargable clona data/reference/Unidades/plantilla_modelos.xlsx (hoja INPUT + diccionarios). 'Diccionario Original-Alternativ' del archivo trae en realidad una tabla de grupo de compras (no aplica a Modelos, confirmado por Seba) y no se entrega al usuario. El input es por NOMBRE (filial, marca, fabricante, grupo de artículo, jerarquía) y se traduce a código antes de procesar.",
+  "traduccion_nombres": [
+    {
+      "tipo": "mapa",
+      "columna_origen": "FILIAL CODIGO",
+      "columna_destino": "FILIAL CODIGO",
+      "mapa": {
+        "Maco Tattersall": "VA00",
+        "Tattersall Maquinarias": "VC00",
+        "Tattersall Multimaq": "VD00",
+        "Tattersall Industrial y Maquinarias": "VE00",
+        "Tattersall Automotriz": "VF00",
+        "VA00": "VA00",
+        "VC00": "VC00",
+        "VD00": "VD00",
+        "VE00": "VE00",
+        "VF00": "VF00"
+      },
+      "_nota": "Acepta el nombre de la sociedad (Diccionario Filiales) o el código directo. A diferencia de Repuestos, en Modelos VE00 sigue siendo una filial propia (tiene sus propios centros/cebe y grupo de compras), por eso 'Tattersall Industrial y Maquinarias' -> VE00 y no VC00. 'Tattersall Automotriz y Maco Tattersall' (VF00+VA00) no está confirmada y se rechaza con aviso, igual que en Repuestos."
+    },
+    {
+      "tipo": "mapa",
+      "columna_origen": "TIPO MATERIAL",
+      "columna_destino": "TIPO MATERIAL",
+      "mapa": {
+        "ZVEH": "ZVEH",
+        "ZMAQ": "ZMAQ",
+        "ZCAM": "ZCAM",
+        "ZUSA": "ZUSA"
+      },
+      "_nota": "Define plantilla SAP y rango de numeración de cada fila (ZVEH Vehículos y Motos, ZMAQ Maquinaria, ZCAM Camiones, ZUSA Unidades usados). Las cuatro usan el mismo layout SAP de 151 columnas."
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE MARCA",
+      "columna_destino": "MARCA CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos.xlsx",
+      "diccionario_sheet": "Diccionario Marcas",
+      "col_nombre": "Descripción Marca",
+      "col_codigo": "Marca"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE FABRICANTE",
+      "columna_destino": "FABRICANTE CODIGO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos.xlsx",
+      "diccionario_sheet": "Diccionario Fabricantes",
+      "col_nombre": "Fabricante externo",
+      "col_codigo": "Fabricante"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO ARTICULO",
+      "columna_destino": "GRUPO ARTICULO",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos.xlsx",
+      "diccionario_sheet": "Grupo de Articulos",
+      "col_nombre": "Descripción",
+      "col_codigo": "Grupo Artículo"
+    },
+    {
+      "tipo": "jerarquia",
+      "columna_origen": "NOMBRE JERARQUIA",
+      "columna_destino": "JERARQUIA",
+      "diccionario_file": "data/reference/Unidades/plantilla_modelos.xlsx",
+      "diccionario_sheet": "Diccionario Jerarquías",
+      "col_texto_completo": "Texto Jerarquía",
+      "col_nivel1": "Nivel 1",
+      "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2",
+      "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3",
+      "ancho_nivel3": 8
+    }
+  ],
+  "validaciones": {
+    "campos_obligatorios": [
+      "FILIAL CODIGO",
+      "TIPO MATERIAL",
+      "UNIDAD DE MEDIDA",
+      "TEXTO BREVE",
+      "NPF",
+      "GRUPO ARTICULO",
+      "NOMBRE JERARQUIA",
+      "NOMBRE MARCA",
+      "NOMBRE FABRICANTE"
+    ]
   }
 }
