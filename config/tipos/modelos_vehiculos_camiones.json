@@ -80,7 +80,15 @@
   "_reference_nota": "cebe3.0 reemplaza a data/reference/Unidades/centros_ampliacion.xlsx (más completo y con algunas correcciones -- ver diffs confirmados con Seba). Cubre VF00/VA00/VC00/VD00/VE00 (columna COD_SOCIEDAD).",
   "reference_filter": {
     "column": "AREA_LINEA_NEGOCIO",
-    "value": "Vta. Unidades Nuevas"
+    "value": ["Vta. Unidades Nuevas", "Vta. Electromovilidad Unidades Nuevas"]
+  },
+  "area_por_npf": {
+    "_nota": "Pedido de Seba (igual que Maquinarias): si el NPF termina en BEV va el Centro de beneficio de electromovilidad (...02), cualquier otro NPF el de 'Vta. Unidades Nuevas' (...01). Ver engine._acotar_area_por_npf.",
+    "columna_npf": "NPF",
+    "sufijo": "BEV",
+    "columna_area": "AREA_LINEA_NEGOCIO",
+    "area_si_termina": "Vta. Electromovilidad Unidades Nuevas",
+    "area_si_no": "Vta. Unidades Nuevas"
   },
 
   "key_input": "FABRICANTE CODIGO",

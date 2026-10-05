@@ -5,6 +5,7 @@
   "bloque_confirmacion_sap": "ZCAM",
   "rango_correlativo_nombre": "zcam_material",
   "grupo_de_compras_dinamico": "unidades",
+  "grupo_de_compras_default": "M28",
   "canales_distribucion": [
     "20",
     "30"

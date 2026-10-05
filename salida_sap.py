@@ -559,11 +559,24 @@ def _resolver_grupo_compras(df_sap: pd.DataFrame, plantilla: dict, primeras: Dic
     idx_marca = primeras[COL_MARCA]
     idx_filial = primeras[COL_ORG_VENTAS]
 
+    # Si la plantilla define "grupo_de_compras_default" (hoy solo ZMAQ: 'Q19'),
+    # una marca que no esté en la tabla usa ese valor en vez de quedar vacía.
+    por_defecto = plantilla.get("grupo_de_compras_default")
+
+    solo_marca = plantilla.get("grupo_de_compras_solo_marca")
+
     sin_grupo = set()
     for i in range(len(df_sap)):
+        if solo_marca:
+            # Tabla plana {cod_marca: grupo}, sin mirar la filial (ZMAQ).
+            marca = _normalizar_codigo_marca(df_sap.iat[i, idx_marca])
+            df_sap.iat[i, idx_grupo] = tabla.get(marca) or por_defecto or ""
+            continue
         filial = str(df_sap.iat[i, idx_filial]).strip()
         opciones = tabla.get(filial)
         if not opciones:
+            if por_defecto:
+                df_sap.iat[i, idx_grupo] = por_defecto
             continue
 
         if "_default" in opciones:
@@ -574,6 +587,8 @@ def _resolver_grupo_compras(df_sap: pd.DataFrame, plantilla: dict, primeras: Dic
         valor = opciones.get(marca)
         if valor:
             df_sap.iat[i, idx_grupo] = valor
+        elif por_defecto:
+            df_sap.iat[i, idx_grupo] = por_defecto
         else:
             sin_grupo.add(marcas.get(marca, marca))
 

@@ -762,6 +762,28 @@ def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
     return f"{tipo_id} · {tipo_sap}" if tipo_sap else tipo_id
 
 
+def _acotar_area_por_npf(ref_df, fila_input, cfg_area: dict, col_marca: str, valor_marca) -> pd.DataFrame:
+    """
+    Maquinaria: el Centro de beneficio depende del combustible. Si el NPF
+    termina en BEV (eléctrico) corresponde el área 'Vta. Electromovilidad
+    Unidades Nuevas' (cebe ...02); cualquier otro NPF, 'Vta. Unidades Nuevas'
+    (cebe ...01). Sin esto, una marca con ambas áreas (ej. Hyster) generaba
+    cada centro dos veces, una con cada cebe.
+
+    Si la marca de la fila solo existe en el área opuesta (ej. ASILE MASTER/020
+    y COMBILIFT/030, que solo tienen fila bajo electromovilidad) no se acota:
+    se usa la única que tiene.
+    """
+    npf = str(fila_input.get(cfg_area["columna_npf"], "")).strip().upper()
+    area = cfg_area["area_si_termina"] if npf.endswith(cfg_area["sufijo"].upper()) else cfg_area["area_si_no"]
+    col_area = cfg_area["columna_area"]
+    propias = ref_df[ref_df[col_marca] == valor_marca]
+    if not propias.empty and propias[col_area].eq(area).sum() == 0:
+        return ref_df
+    acotado = ref_df[ref_df[col_area] == area]
+    return acotado if not acotado.empty else ref_df
+
+
 def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     Punto de entrada principal: recibe el Excel del usuario (file-like) y
@@ -800,6 +822,8 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             ref_df_completa = ref_df_completa[
                 ref_df_completa[reference_filter["column"]] == valor_filtro
             ]
+
+    area_por_npf = cfg.get("area_por_npf")
 
     disponibilidad = _cargar_disponibilidad(cfg)
     bloqueado_valor = cfg.get("disponibilidad", {}).get("valor_bloqueado", 0)
@@ -872,6 +896,8 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             # propia en esta filial, cae al comodín de marca (fallback_value_marca,
             # ej. "280" = TODAS/OTRAS MARCAS) antes de seguir con fabricante.
             valor_marca = fila_input.get(key_input_marca)
+            if area_por_npf:
+                ref_df = _acotar_area_por_npf(ref_df, fila_input, area_por_npf, key_reference_marca, valor_marca)
             ref_df_marca = ref_df[ref_df[key_reference_marca] == valor_marca]
             if ref_df_marca.empty and fallback_value_marca:
                 ref_df_marca = ref_df[ref_df[key_reference_marca] == fallback_value_marca]
