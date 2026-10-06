@@ -467,3 +467,28 @@ td.num, th.num { font-family: var(--mono); white-space: nowrap; }
 .tipo-card .tipo-name { font-size: 18px; font-weight: 600; }
 .tipo-card .desc { font-size: 13px; color: var(--ink-dim); }
 .tipo-card-go { margin-top: auto; color: var(--accent-hover); font-weight: 500; }
+
+
+/* Historial de correlativos: 5 tarjetas en una fila y una tabla con encabezado propio */
+main.main-ancho { max-width: 1100px; }
+
+.main-ancho .stat-row {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.panel-tabla { padding: 0; overflow: hidden; }
+
+.panel-tabla-head {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-tabla-head h2 { margin: 0 0 4px; }
+.panel-tabla-head .lede { margin: 0; }
+
+.tabla-scroll { max-height: 520px; overflow: auto; }
+.panel-tabla table { margin-top: 0; }
+.panel-tabla th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+
+@media (max-width: 900px) {
+  .main-ancho .stat-row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+}

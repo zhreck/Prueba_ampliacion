@@ -25,6 +25,7 @@
   },
   "_defaults_confirmados_extra_nota": "'Sujeto-lote'='X' está confirmado directamente en confirmacionCampos.xlsx para el bloque ZCAM (fila 19, celda literal 'X'). Clasificación Fiscal para el materi/ZMWS, Gr.imputación mat. y Precio Variable fueron confirmados por Seba en arreglos_notas.txt para las tres plantillas (no son específicos de ZCAM). Sector, Almacén, Perfil Pieza de Fabricante y los flags de 'Vista ...'/'Datos Basicos' salían solo evidenciados para ZMAQ, pero Seba confirmó que aplican igual a las tres plantillas de Modelos.",
   "defaults_confirmados_extra": {
+    "Categoría Clase": "300",
     "Sector": "10",
     "Sujeto-lote": "X",
     "Almacén": "2000",

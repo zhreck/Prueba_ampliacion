@@ -25,12 +25,12 @@
 
   <form action="{{ url_for('procesar') }}" method="post" enctype="multipart/form-data">
     <input type="hidden" name="tipo" value="{{ tipo.id }}">
-    <p class="lede">
-      <a class="plantilla-link" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
+    <div class="plantilla-links-grupo">
+      <a class="plantilla-link-boton" href="{{ url_for('plantilla', tipo_id=tipo.id) }}">Descargar plantilla vacía</a>
       {% if tipo.tiene_diccionario %}
-        — <a class="plantilla-link" href="{{ url_for('diccionario', tipo_id=tipo.id) }}">Descargar diccionario de códigos</a>
+        <a class="plantilla-link-boton" href="{{ url_for('diccionario', tipo_id=tipo.id) }}">Descargar diccionario de códigos</a>
       {% endif %}
-    </p>
+    </div>
 
     <div class="step">
       <span class="step-num">2</span>
@@ -57,7 +57,7 @@
         <input type="checkbox" id="generar_sap" name="generar_sap">
         <div>
           <span class="tipo-name">Generar formato de carga SAP (MM01)</span>
-          <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input (Repuestos acepta varias filiales en el mismo archivo). Los campos que el negocio todavía no confirmó quedan en blanco, listados en una hoja aparte "PENDIENTES".</span>
+          <span class="desc">Convierte el resultado ampliado a las 151 columnas del formato real de SAP para la filial del input (Repuestos acepta varias filiales en el mismo archivo). Si algún dato no se puede completar, la celda queda en blanco y se avisa al procesar.</span>
         </div>
       </label>
     </fieldset>

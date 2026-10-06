@@ -254,7 +254,7 @@ def procesar():
                 faltantes_no_pendientes = [c for c in dict.fromkeys(obligatorios_vacios) if c not in pendientes]
                 if faltantes_no_pendientes:
                     avisos.append(
-                        f"⚠️ Sin dato (no pendiente de negocio, revisar tabla de referencia): "
+                        f"⚠️ Sin dato en la tabla de referencia: "
                         f"{', '.join(faltantes_no_pendientes)}"
                     )
             except salida_sap.FormatoSAPError as e:

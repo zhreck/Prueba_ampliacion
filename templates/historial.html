@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block main_class %}main-ancho{% endblock %}
 {% block content %}
 
 <div class="stat-row">
@@ -11,9 +12,12 @@
   {% endfor %}
 </div>
 
-<div class="panel">
-  <h2>Últimos números asignados</h2>
-  <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita.</p>
+<div class="panel panel-tabla">
+  <div class="panel-tabla-head">
+    <h2>Últimos números asignados</h2>
+    <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita.</p>
+  </div>
+  <div class="tabla-scroll">
   <table>
     <thead>
       <tr>
@@ -38,9 +42,10 @@
         <td class="num">{{ r.hora_fmt }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="6">Todavía no se ha generado ninguna ampliación.</td></tr>
+      <tr><td colspan="7">Todavía no se ha generado ninguna ampliación.</td></tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}
