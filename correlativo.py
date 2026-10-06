@@ -189,6 +189,32 @@ def estado_contador(nombre_contador: str, range_min: int, range_max: int) -> dic
         conn.close()
 
 
+def npfs_ya_asignados(tipo: str, npfs) -> dict:
+    """
+    De los NPF dados, cuáles ya tienen un número asignado en el historial para
+    ese `tipo` (la misma etiqueta que se guarda al asignar, ej. "modelos · ZCAM").
+    Compara sin mayúsculas ni espacios sobrantes. Devuelve
+    {NPF normalizado: (número, fecha ISO)} con la asignación más reciente.
+    """
+    buscados = sorted({str(n).strip().upper() for n in npfs if str(n).strip()})
+    encontrados: dict = {}
+    conn = _get_conn()
+    try:
+        for i in range(0, len(buscados), 500):
+            lote = buscados[i:i + 500]
+            marcas = ",".join("?" * len(lote))
+            for npf, numero, fecha in conn.execute(
+                f"""SELECT UPPER(TRIM(npf)), numero_asignado, fecha FROM historial_asignaciones
+                    WHERE tipo = ? AND UPPER(TRIM(npf)) IN ({marcas})
+                    ORDER BY fecha, id""",
+                [tipo, *lote],
+            ):
+                encontrados[npf] = (numero, fecha)
+        return encontrados
+    finally:
+        conn.close()
+
+
 _COLUMNAS_BUSQUEDA = ("CAST(numero_asignado AS TEXT)", "tipo", "tipo_material", "npf", "texto_breve",
                       "fabricante_codigo", "fabricante_desc")
 

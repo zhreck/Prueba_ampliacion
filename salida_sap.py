@@ -307,6 +307,9 @@ def aplicar_plantilla_sap(
     if "FILIAL CODIGO" not in df_ampliado.columns:
         raise FormatoSAPError("La fila ampliada no tiene columna 'FILIAL CODIGO'; no se puede resolver Org. Ventas.")
 
+    if not tipo_material.startswith("ZRP"):
+        _validar_npf_no_generado(df_ampliado, tipo_material)
+
     resultado_filas = []
     numeros_asignados = {}
 
@@ -324,7 +327,7 @@ def aplicar_plantilla_sap(
                 tipo=f"{familia} · {tipo_material}",
                 texto_breve=str(primera_fila.get("TEXTO BREVE", "")),
                 fabricante_codigo=str(primera_fila.get("CODIGO FABRICANTE", primera_fila.get("FABRICANTE CODIGO", ""))),
-                tipo_material=str(primera_fila.get("TIPO MATERIAL REPUESTO", primera_fila.get("TIPO MATERIAL", tipo_material))).strip() or tipo_material,
+                tipo_material=str(primera_fila.get("TIPO MATERIAL REPUESTO", tipo_material)).strip() or tipo_material,
                 npf=str(primera_fila.get("NPF", "")).strip(),
                 fabricante_desc=fab_codigo_a_desc.get(str(primera_fila.get("CODIGO FABRICANTE", "")).strip(), ""),
             )
@@ -392,6 +395,29 @@ def aplicar_plantilla_sap(
     }
 
     return df_sap, metadatos
+
+
+def _validar_npf_no_generado(df_ampliado: pd.DataFrame, tipo_material: str) -> None:
+    """
+    Modelos: un NPF no se puede volver a generar si ya tiene un número asignado
+    en ese tipo de material (ZVEH/ZCAM/ZMAQ). Se revisa contra el historial de
+    correlativos ANTES de asignar ningún número, así un archivo rechazado no
+    gasta correlativos. (Los repetidos dentro del mismo archivo los rechaza
+    engine._validar_npf_unico; Repuestos tiene su propia regla de NPF.)
+    """
+    if "NPF" not in df_ampliado.columns:
+        return
+    etiqueta = f"modelos · {tipo_material}"
+    previos = correlativo.npfs_ya_asignados(etiqueta, df_ampliado["NPF"].unique())
+    if not previos:
+        return
+    detalle = "; ".join(
+        f"{npf} (ya es el material {numero}, {fecha.replace('T', ' ')[:16]})"
+        for npf, (numero, fecha) in sorted(previos.items())
+    )
+    raise FormatoSAPError(
+        f"NPF ya generado antes en {tipo_material} — no se generó la planilla. {detalle}"
+    )
 
 
 PLANILLA_CARGA_REPUESTOS_PATH = BASE_DIR / "data" / "reference" / "Repuestos" / "PlanillaCargaTattersall_Repuestos_ouput.xlsx"
