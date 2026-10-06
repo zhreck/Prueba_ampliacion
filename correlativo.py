@@ -57,6 +57,18 @@ def _get_conn():
             fecha TEXT NOT NULL
         )
     """)
+    # Columnas agregadas después (el historial ahora guarda qué se cargó, para
+    # poder sacar un mini reporte): se agregan a bases ya existentes.
+    existentes = {r[1] for r in conn.execute("PRAGMA table_info(historial_asignaciones)")}
+    for columna, definicion in (
+        ("tipo_material", "TEXT"),
+        ("npf", "TEXT"),
+        ("fabricante_desc", "TEXT"),
+        ("oculto", "INTEGER NOT NULL DEFAULT 0"),
+    ):
+        if columna not in existentes:
+            conn.execute(f"ALTER TABLE historial_asignaciones ADD COLUMN {columna} {definicion}")
+    conn.execute("CREATE TABLE IF NOT EXISTS migraciones (nombre TEXT PRIMARY KEY, fecha TEXT NOT NULL)")
     conn.commit()
     return conn
 
@@ -89,7 +101,8 @@ def obtener_rango(nombre_rango: str) -> dict:
 
 
 def siguiente_numero(nombre_contador: str, range_min: int = None, range_max: int = None,
-                      tipo: str = "", texto_breve: str = "", fabricante_codigo: str = "") -> int:
+                      tipo: str = "", texto_breve: str = "", fabricante_codigo: str = "",
+                      tipo_material: str = "", npf: str = "", fabricante_desc: str = "") -> int:
     """
     Entrega atómicamente el siguiente número disponible del rango indicado,
     dejándolo guardado para que nadie más lo reutilice.
@@ -101,6 +114,7 @@ def siguiente_numero(nombre_contador: str, range_min: int = None, range_max: int
         tipo: Tipo de material para historial
         texto_breve: Descripción breve para historial
         fabricante_codigo: Código fabricante para historial
+        tipo_material, npf, fabricante_desc: datos extra del material para el historial
     
     Returns:
         int: Siguiente número disponible
@@ -144,10 +158,11 @@ def siguiente_numero(nombre_contador: str, range_min: int = None, range_max: int
 
             conn.execute(
                 """INSERT INTO historial_asignaciones
-                   (nombre_contador, numero_asignado, tipo, texto_breve, fabricante_codigo, fecha)
-                   VALUES (?, ?, ?, ?, ?, ?)""",
+                   (nombre_contador, numero_asignado, tipo, texto_breve, fabricante_codigo, fecha,
+                    tipo_material, npf, fabricante_desc)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (nombre_contador, nuevo_valor, tipo, texto_breve, fabricante_codigo,
-                 datetime.now().isoformat(timespec="seconds")),
+                 datetime.now().isoformat(timespec="seconds"), tipo_material, npf, fabricante_desc),
             )
             conn.commit()
             return nuevo_valor
@@ -174,17 +189,43 @@ def estado_contador(nombre_contador: str, range_min: int, range_max: int) -> dic
         conn.close()
 
 
-def historial(limit: int = 100) -> list:
+_COLUMNAS_BUSQUEDA = ("CAST(numero_asignado AS TEXT)", "tipo", "tipo_material", "npf", "texto_breve",
+                      "fabricante_codigo", "fabricante_desc")
+
+
+def _filtro_historial(buscar: str):
+    """WHERE del historial: sin los materiales ocultos (cargas mal hechas que se
+    conservan solo para que su número no se reutilice) ni el contador interno."""
+    where = "nombre_contador != 'material_global' AND oculto = 0"
+    params: list = []
+    for palabra in buscar.split():
+        where += " AND (" + " OR ".join(f"{c} LIKE ?" for c in _COLUMNAS_BUSQUEDA) + ")"
+        params += [f"%{palabra}%"] * len(_COLUMNAS_BUSQUEDA)
+    return where, params
+
+
+def contar_historial(buscar: str = "") -> int:
+    where, params = _filtro_historial(buscar)
+    conn = _get_conn()
+    try:
+        return conn.execute(f"SELECT COUNT(*) FROM historial_asignaciones WHERE {where}", params).fetchone()[0]
+    finally:
+        conn.close()
+
+
+def historial(limit: int = 100, offset: int = 0, buscar: str = "") -> list:
+    where, params = _filtro_historial(buscar)
     conn = _get_conn()
     try:
         cur = conn.execute(
-            """SELECT numero_asignado, tipo, texto_breve, fabricante_codigo, fecha, nombre_contador
-               FROM historial_asignaciones
-               WHERE nombre_contador != 'material_global'
-               ORDER BY id DESC LIMIT ?""",
-            (limit,),
+            f"""SELECT numero_asignado, tipo, texto_breve, fabricante_codigo, fecha,
+                       npf, fabricante_desc
+                FROM historial_asignaciones
+                WHERE {where}
+                ORDER BY fecha DESC, numero_asignado DESC LIMIT ? OFFSET ?""",
+            params + [limit, offset],
         )
-        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha"]
+        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "npf", "fabricante_desc"]
         registros = [dict(zip(cols, r)) for r in cur.fetchall()]
         for reg in registros:
             # Se guarda en formato ISO ("2026-10-01T14:32:07") para que el TEXT
@@ -194,6 +235,79 @@ def historial(limit: int = 100) -> list:
             fecha, _, hora = reg["fecha"].partition("T")
             reg["fecha_fmt"] = fecha
             reg["hora_fmt"] = hora
+            for campo in ("texto_breve", "fabricante_codigo", "npf", "fabricante_desc"):
+                reg[campo] = reg[campo] or ""
         return registros
     finally:
         conn.close()
+
+
+CORRELATIVOS_REPUESTOS_PATH = Path(__file__).parent / "data" / "reference" / "Repuestos" / "CorrelativosRepuestos.xlsx"
+IMPORTACION_REPUESTOS_NOMBRE = "importar_correlativos_repuestos_prd_2026-10-06"
+IMPORTACION_REPUESTOS_FECHA = "2026-10-06T12:30:00"
+
+
+def importar_correlativos_repuestos() -> int:
+    """
+    Carga UNA sola vez los correlativos de Repuestos que ya existen en PRD
+    (data/reference/Repuestos/CorrelativosRepuestos.xlsx): quedan en el
+    historial con fecha/hora fija (el Excel no trae cuándo se crearon) y el
+    contador de 'repuestos_material' avanza al último número del Excel, así
+    nunca se vuelve a asignar uno ya usado.
+
+    Las combinaciones NPF:Fabricante repetidas (cargas mal hechas, todas
+    'NO UTILIZAR:...') se guardan igual para conservar su número, pero con
+    oculto=1: no se muestran en el historial.
+
+    Devuelve cuántas filas se agregaron (0 si ya estaba importado o falta el archivo).
+    """
+    if not CORRELATIVOS_REPUESTOS_PATH.exists():
+        return 0
+    import pandas as pd
+
+    df = pd.read_excel(CORRELATIVOS_REPUESTOS_PATH, dtype=str, keep_default_na=False)
+    col_material, col_tipo, col_npf, col_fab, col_desc, col_clave, col_texto = df.columns[:7]
+    df["_num"] = df[col_material].astype(int)
+    df["_oculto"] = df[col_clave].str.strip().str.upper().duplicated(keep=False).astype(int)
+    nombre_contador = "repuestos_material"
+    rango = obtener_rango(nombre_contador)
+
+    with _lock:
+        conn = _get_conn()
+        try:
+            if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (IMPORTACION_REPUESTOS_NOMBRE,)).fetchone():
+                return 0
+            ya_registrados = {
+                r[0] for r in conn.execute(
+                    "SELECT numero_asignado FROM historial_asignaciones WHERE nombre_contador = ?", (nombre_contador,)
+                )
+            }
+            filas = [
+                (nombre_contador, int(f["_num"]), f"repuestos · {f[col_tipo].strip()}", f[col_texto].strip(), f[col_fab].strip(),
+                 IMPORTACION_REPUESTOS_FECHA, f[col_tipo].strip(), f[col_npf].strip(), f[col_desc].strip(), int(f["_oculto"]))
+                for _, f in df.iterrows() if int(f["_num"]) not in ya_registrados
+            ]
+            conn.executemany(
+                """INSERT INTO historial_asignaciones
+                   (nombre_contador, numero_asignado, tipo, texto_breve, fabricante_codigo, fecha,
+                    tipo_material, npf, fabricante_desc, oculto)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                filas,
+            )
+            maximo = int(df["_num"].max())
+            actual = conn.execute("SELECT ultimo_valor FROM contadores WHERE nombre = ?", (nombre_contador,)).fetchone()
+            if actual is None:
+                conn.execute(
+                    "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
+                    (nombre_contador, maximo, rango["min"], rango["max"]),
+                )
+            elif actual[0] < maximo:
+                conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (maximo, nombre_contador))
+            conn.execute(
+                "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
+                (IMPORTACION_REPUESTOS_NOMBRE, datetime.now().isoformat(timespec="seconds")),
+            )
+            conn.commit()
+            return len(filas)
+        finally:
+            conn.close()

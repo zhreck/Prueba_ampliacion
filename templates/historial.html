@@ -14,8 +14,16 @@
 
 <div class="panel panel-tabla">
   <div class="panel-tabla-head">
-    <h2>Últimos números asignados</h2>
-    <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita.</p>
+    <h2>Historial de números asignados</h2>
+    <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita. {{ "{:,}".format(total).replace(",", ".") }} registros{% if buscar %} para «{{ buscar }}»{% endif %}.</p>
+    <form class="historial-buscar" method="get" action="{{ url_for('historial') }}">
+      <input type="search" name="q" value="{{ buscar }}" placeholder="Buscar por número, NPF, fabricante, tipo…">
+      <button type="submit">Buscar</button>
+      {% if buscar %}<a class="plantilla-link" href="{{ url_for('historial') }}">Limpiar</a>{% endif %}
+      <a class="plantilla-link-boton historial-descarga" href="{{ url_for('historial_descargar', q=buscar) if buscar else url_for('historial_descargar') }}">
+        Descargar {% if buscar %}resultado filtrado{% else %}historial{% endif %} (Excel)
+      </a>
+    </form>
   </div>
   <div class="tabla-scroll">
   <table>
@@ -23,9 +31,9 @@
       <tr>
         <th class="num">Número</th>
         <th>Tipo</th>
-        <th>Rango</th>
-        <th>Texto breve</th>
+        <th>NPF</th>
         <th>Fabricante</th>
+        <th>Texto breve</th>
         <th>Fecha</th>
         <th>Hora</th>
       </tr>
@@ -35,17 +43,24 @@
       <tr>
         <td class="num">{{ r.numero_asignado }}</td>
         <td>{{ r.tipo }}</td>
-        <td>{{ r.rango }}</td>
+        <td class="num">{{ r.npf }}</td>
+        <td class="num">{{ r.fabricante_codigo }}{% if r.fabricante_desc %} · {{ r.fabricante_desc }}{% endif %}</td>
         <td>{{ r.texto_breve }}</td>
-        <td class="num">{{ r.fabricante_codigo }}</td>
         <td class="num">{{ r.fecha_fmt }}</td>
         <td class="num">{{ r.hora_fmt }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="7">Todavía no se ha generado ninguna ampliación.</td></tr>
+      <tr><td colspan="7">{% if buscar %}Ningún registro coincide con la búsqueda.{% else %}Todavía no se ha generado ninguna ampliación.{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
+  {% if paginas > 1 %}
+  <div class="paginacion">
+    {% if pagina > 1 %}<a href="{{ url_for('historial', p=pagina-1, q=buscar) }}">← Anterior</a>{% else %}<span></span>{% endif %}
+    <span>Página {{ pagina }} de {{ paginas }}</span>
+    {% if pagina < paginas %}<a href="{{ url_for('historial', p=pagina+1, q=buscar) }}">Siguiente →</a>{% else %}<span></span>{% endif %}
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

@@ -324,6 +324,9 @@ def aplicar_plantilla_sap(
                 tipo=f"{familia} · {tipo_material}",
                 texto_breve=str(primera_fila.get("TEXTO BREVE", "")),
                 fabricante_codigo=str(primera_fila.get("CODIGO FABRICANTE", primera_fila.get("FABRICANTE CODIGO", ""))),
+                tipo_material=str(primera_fila.get("TIPO MATERIAL REPUESTO", primera_fila.get("TIPO MATERIAL", tipo_material))).strip() or tipo_material,
+                npf=str(primera_fila.get("NPF", "")).strip(),
+                fabricante_desc=fab_codigo_a_desc.get(str(primera_fila.get("CODIGO FABRICANTE", "")).strip(), ""),
             )
         except correlativo.RangoNoConfiguradoError as e:
             raise FormatoSAPError(f"Error de correlativo para {tipo_material}: {e}") from e

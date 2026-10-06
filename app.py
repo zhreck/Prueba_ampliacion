@@ -17,6 +17,13 @@ import salida_sap
 app = Flask(__name__)
 app.secret_key = "cambiar-esta-clave-en-produccion"
 
+# Carga única de los correlativos de Repuestos que ya existen en PRD (queda
+# marcada como hecha en la base; si ya estaba importada no hace nada).
+try:
+    correlativo.importar_correlativos_repuestos()
+except Exception as e:  # nunca impedir que la app arranque por esto
+    app.logger.error("No se pudo importar CorrelativosRepuestos.xlsx: %s", e)
+
 # Archivos generados listos para descargar, en memoria (proceso único de Flask
 # dev server — se pierden si se reinicia, es intencional: son de un solo uso).
 # Evita el patrón "flash + send_file directo": si /procesar devolviera el
@@ -358,8 +365,49 @@ def historial():
         r = correlativo.obtener_rango(nombre)
         estados.append((etiqueta, correlativo.estado_contador(nombre, r["min"], r["max"])))
 
-    registros = correlativo.historial(limit=200)
-    return render_template("historial.html", estados=estados, registros=registros)
+    buscar = request.args.get("q", "").strip()
+    por_pagina = 100
+    total = correlativo.contar_historial(buscar)
+    paginas = max(1, -(-total // por_pagina))
+    try:
+        pagina = min(max(1, int(request.args.get("p", 1))), paginas)
+    except ValueError:
+        pagina = 1
+    registros = correlativo.historial(limit=por_pagina, offset=(pagina - 1) * por_pagina, buscar=buscar)
+    return render_template(
+        "historial.html", estados=estados, registros=registros,
+        buscar=buscar, pagina=pagina, paginas=paginas, total=total,
+    )
+
+
+@app.route("/historial/descargar")
+def historial_descargar():
+    # Descarga en Excel lo mismo que muestra el historial: sin paginar y con el
+    # mismo filtro de búsqueda (?q=) que tenga aplicado el usuario.
+    buscar = request.args.get("q", "").strip()
+    registros = correlativo.historial(limit=-1, buscar=buscar)  # LIMIT -1 = sin tope en SQLite
+
+    wb = openpyxl.Workbook(write_only=True)
+    ws = wb.create_sheet("Historial")
+    ws.append(["Número", "Tipo", "NPF", "Código fabricante", "Fabricante", "Texto breve", "Fecha", "Hora"])
+    for r in registros:
+        ws.append([
+            r["numero_asignado"], r["tipo"], r["npf"], r["fabricante_codigo"], r["fabricante_desc"],
+            r["texto_breve"], r["fecha_fmt"], r["hora_fmt"],
+        ])
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    nombre = "historial_correlativos"
+    if buscar:
+        nombre += "_filtrado"
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"{nombre}_{datetime.now():%Y%m%d_%H%M}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 # Auto-deploy en PythonAnywhere: un webhook de GitHub (evento "push") llama a

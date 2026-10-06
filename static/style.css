@@ -492,3 +492,17 @@ main.main-ancho { max-width: 1100px; }
 @media (max-width: 900px) {
   .main-ancho .stat-row { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
 }
+
+.historial-buscar { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.historial-buscar input[type="search"] {
+  flex: 1; max-width: 420px; padding: 9px 12px; font: inherit; font-size: 13.5px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel); color: var(--ink);
+}
+.historial-buscar button { padding: 9px 16px; font-size: 13.5px; }
+.paginacion {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 28px; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-dim);
+}
+.paginacion a { color: var(--accent-hover); font-weight: 500; text-decoration: none; }
+.paginacion a:hover { color: var(--accent); }
+.historial-descarga { flex: 0 0 auto; margin-left: auto; padding: 9px 16px; }
