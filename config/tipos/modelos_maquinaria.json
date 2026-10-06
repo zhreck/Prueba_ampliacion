@@ -75,10 +75,15 @@
   },
   "_reference_filter_nota": "A diferencia de Vehículos y Camiones, acá el valor es una LISTA: algunas marcas comodín de maquinaria eléctrica (ej. grúas ASILE MASTER/020, COMBILIFT/030 con fabricante F9999) SOLO tienen fila en cebe3.0 bajo 'Vta. Electromovilidad Unidades Nuevas', nunca bajo el 'Vta. Unidades Nuevas' genérico -- verificado contra el ejemplo real (material 20000000, GRUA 20S BEV).",
 
+  "npf_unico_por_tipo_material": {
+    "_nota": "Pedido de Seba: si un NPF se repite dentro del mismo tipo de material (ZVEH/ZCAM/ZMAQ, que sale de la filial) no se genera la planilla y se muestra un error. Ver engine._validar_npf_unico.",
+    "columna_npf": "NPF"
+  },
+
   "area_por_npf": {
-    "_nota": "Pedido de Seba: el cebe '02' es de electromovilidad -- si el NPF termina en BEV va el área de electromovilidad (cebe ...02), cualquier otro NPF va 'Vta. Unidades Nuevas' (cebe ...01). Ver engine._acotar_area_por_npf.",
+    "_nota": "Pedido de Seba: el cebe '02' es de electromovilidad -- si el NPF termina en BEV, PHEV o MHEV va el área de electromovilidad (cebe ...02), cualquier otro NPF va 'Vta. Unidades Nuevas' (cebe ...01). Ver engine._acotar_area_por_npf.",
     "columna_npf": "NPF",
-    "sufijo": "BEV",
+    "sufijos": ["BEV", "PHEV", "MHEV"],
     "columna_area": "AREA_LINEA_NEGOCIO",
     "area_si_termina": "Vta. Electromovilidad Unidades Nuevas",
     "area_si_no": "Vta. Unidades Nuevas"

@@ -764,8 +764,8 @@ def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
 
 def _acotar_area_por_npf(ref_df, fila_input, cfg_area: dict, col_marca: str, valor_marca) -> pd.DataFrame:
     """
-    Maquinaria: el Centro de beneficio depende del combustible. Si el NPF
-    termina en BEV (eléctrico) corresponde el área 'Vta. Electromovilidad
+    El Centro de beneficio depende del combustible. Si el NPF termina en BEV,
+    PHEV o MHEV (eléctrico/híbrido; "sufijos" en la config) corresponde el área 'Vta. Electromovilidad
     Unidades Nuevas' (cebe ...02); cualquier otro NPF, 'Vta. Unidades Nuevas'
     (cebe ...01). Sin esto, una marca con ambas áreas (ej. Hyster) generaba
     cada centro dos veces, una con cada cebe.
@@ -775,13 +775,44 @@ def _acotar_area_por_npf(ref_df, fila_input, cfg_area: dict, col_marca: str, val
     se usa la única que tiene.
     """
     npf = str(fila_input.get(cfg_area["columna_npf"], "")).strip().upper()
-    area = cfg_area["area_si_termina"] if npf.endswith(cfg_area["sufijo"].upper()) else cfg_area["area_si_no"]
+    sufijos = cfg_area.get("sufijos") or [cfg_area["sufijo"]]
+    area = cfg_area["area_si_termina"] if npf.endswith(tuple(x.upper() for x in sufijos)) else cfg_area["area_si_no"]
     col_area = cfg_area["columna_area"]
     propias = ref_df[ref_df[col_marca] == valor_marca]
     if not propias.empty and propias[col_area].eq(area).sum() == 0:
         return ref_df
     acotado = ref_df[ref_df[col_area] == area]
     return acotado if not acotado.empty else ref_df
+
+
+def _validar_npf_unico(input_df: pd.DataFrame, cfg_npf: dict) -> None:
+    """
+    Modelos: un NPF no puede repetirse dentro del mismo tipo de material. El
+    tipo de material SAP sale de la filial de la fila (ZVEH/ZCAM/ZMAQ, ver
+    salida_sap.FILIAL_A_TIPO_MATERIAL; VC00/VD00/VE00 comparten ZMAQ). Si hay
+    repetidos se rechaza el archivo completo, antes de asignar ningún número.
+    """
+    import salida_sap  # import tardío: salida_sap importa engine
+
+    col = cfg_npf["columna_npf"]
+    if col not in input_df.columns:
+        return
+    claves = pd.DataFrame({
+        "tipo": input_df["FILIAL CODIGO"].map(lambda f: salida_sap.FILIAL_A_TIPO_MATERIAL.get(f, f)),
+        "npf": input_df[col].astype(str).str.strip().str.upper(),
+    })
+    claves = claves[claves["npf"] != ""]
+    repetidos = claves[claves.duplicated(keep=False)]
+    if repetidos.empty:
+        return
+    detalle = []
+    for tipo, grupo in repetidos.groupby("tipo", sort=False):
+        conteo = grupo["npf"].value_counts()
+        detalle.append(f"{tipo}: " + ", ".join(f"{npf} (x{n})" for npf, n in conteo.items()))
+    raise InputInvalidoError(
+        "NPF repetido en el mismo tipo de material — no se generó la planilla. "
+        "Corrige el Excel y vuelve a subirlo. " + " | ".join(detalle)
+    )
 
 
 def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
@@ -791,6 +822,8 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     cfg = cargar_config(tipo_id)
     input_df = _leer_input(file_storage, cfg)
+    if cfg.get("npf_unico_por_tipo_material"):
+        _validar_npf_unico(input_df, cfg["npf_unico_por_tipo_material"])
     ref_df_completa = _cargar_referencia(
         cfg["reference_file"], cfg.get("reference_sheet"), cfg.get("reference_text_columns")
     )

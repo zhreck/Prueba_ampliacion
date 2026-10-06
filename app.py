@@ -24,6 +24,12 @@ try:
 except Exception as e:  # nunca impedir que la app arranque por esto
     app.logger.error("No se pudo importar CorrelativosRepuestos.xlsx: %s", e)
 
+try:
+    for _ajuste in correlativo.aplicar_ajustes_contadores():
+        app.logger.info("Ajuste de contador: %s", _ajuste)
+except Exception as e:
+    app.logger.error("No se pudieron aplicar los ajustes de contadores: %s", e)
+
 # Archivos generados listos para descargar, en memoria (proceso único de Flask
 # dev server — se pierden si se reinicia, es intencional: son de un solo uso).
 # Evita el patrón "flash + send_file directo": si /procesar devolviera el

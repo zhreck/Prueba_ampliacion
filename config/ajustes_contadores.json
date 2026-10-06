@@ -1,0 +1,8 @@
+{
+  "_nota": "Ajustes de contador que se aplican UNA sola vez por 'id' al arrancar la app (ver correlativo.aplicar_ajustes_contadores). 'siguiente' es el próximo número que se entregará. Solo mueven el contador hacia adelante: si ya está más allá, no lo tocan (nunca se reutilizan números). Para volver a mover un contador, agregar una entrada con un 'id' nuevo.",
+  "ajustes": [
+    { "id": "capacitacion_2026-10_zveh", "contador": "zveh_material", "siguiente": 10001355 },
+    { "id": "capacitacion_2026-10_zmaq", "contador": "zmaq_material", "siguiente": 20000260 },
+    { "id": "capacitacion_2026-10_zcam", "contador": "zcam_material", "siguiente": 30000300 }
+  ]
+}

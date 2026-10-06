@@ -82,10 +82,15 @@
     "column": "AREA_LINEA_NEGOCIO",
     "value": ["Vta. Unidades Nuevas", "Vta. Electromovilidad Unidades Nuevas"]
   },
+  "npf_unico_por_tipo_material": {
+    "_nota": "Pedido de Seba: si un NPF se repite dentro del mismo tipo de material (ZVEH/ZCAM/ZMAQ, que sale de la filial) no se genera la planilla y se muestra un error. Ver engine._validar_npf_unico.",
+    "columna_npf": "NPF"
+  },
+
   "area_por_npf": {
-    "_nota": "Pedido de Seba (igual que Maquinarias): si el NPF termina en BEV va el Centro de beneficio de electromovilidad (...02), cualquier otro NPF el de 'Vta. Unidades Nuevas' (...01). Ver engine._acotar_area_por_npf.",
+    "_nota": "Pedido de Seba (igual que Maquinarias): si el NPF termina en BEV, PHEV o MHEV va el Centro de beneficio de electromovilidad (...02), cualquier otro NPF el de 'Vta. Unidades Nuevas' (...01). Ver engine._acotar_area_por_npf.",
     "columna_npf": "NPF",
-    "sufijo": "BEV",
+    "sufijos": ["BEV", "PHEV", "MHEV"],
     "columna_area": "AREA_LINEA_NEGOCIO",
     "area_si_termina": "Vta. Electromovilidad Unidades Nuevas",
     "area_si_no": "Vta. Unidades Nuevas"

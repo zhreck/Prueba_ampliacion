@@ -311,3 +311,52 @@ def importar_correlativos_repuestos() -> int:
             return len(filas)
         finally:
             conn.close()
+
+
+AJUSTES_CONTADORES_PATH = Path(__file__).parent / "config" / "ajustes_contadores.json"
+
+
+def aplicar_ajustes_contadores() -> list:
+    """
+    Aplica los ajustes de config/ajustes_contadores.json (ej. empezar a dar
+    números desde otro valor para una capacitación). Cada ajuste se aplica una
+    sola vez (queda marcado en 'migraciones') y solo mueve el contador hacia
+    adelante: si ya pasó de ese número no lo toca, para no reutilizar nunca un
+    número ya entregado. Devuelve un texto por cada ajuste que cambió algo.
+    """
+    if not AJUSTES_CONTADORES_PATH.exists():
+        return []
+    with open(AJUSTES_CONTADORES_PATH, encoding="utf-8") as fh:
+        ajustes = json.load(fh).get("ajustes", [])
+
+    aplicados = []
+    with _lock:
+        conn = _get_conn()
+        try:
+            for a in ajustes:
+                if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (a["id"],)).fetchone():
+                    continue
+                rango = obtener_rango(a["contador"])
+                if not rango["min"] <= a["siguiente"] <= rango["max"]:
+                    raise RangoNoConfiguradoError(
+                        f"Ajuste '{a['id']}': {a['siguiente']} está fuera del rango {rango['min']}-{rango['max']}."
+                    )
+                objetivo = a["siguiente"] - 1
+                fila = conn.execute("SELECT ultimo_valor FROM contadores WHERE nombre = ?", (a["contador"],)).fetchone()
+                if fila is None:
+                    conn.execute(
+                        "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
+                        (a["contador"], objetivo, rango["min"], rango["max"]),
+                    )
+                    aplicados.append(f"{a['contador']}: siguiente número {a['siguiente']}")
+                elif fila[0] < objetivo:
+                    conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (objetivo, a["contador"]))
+                    aplicados.append(f"{a['contador']}: siguiente número {a['siguiente']} (antes {fila[0] + 1})")
+                conn.execute(
+                    "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
+                    (a["id"], datetime.now().isoformat(timespec="seconds")),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+    return aplicados
