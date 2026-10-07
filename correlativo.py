@@ -14,6 +14,7 @@ Cada tipo de material puede tener su propio correlativo nombrado.
 """
 
 import json
+from functools import lru_cache
 import sqlite3
 import threading
 from datetime import datetime
@@ -215,6 +216,29 @@ def npfs_ya_asignados(tipo: str, npfs) -> dict:
         conn.close()
 
 
+FABRICANTES_DICCIONARIO_PATH = Path(__file__).parent / "data" / "reference" / "Unidades" / "plantilla_modelos_ZVEH_ZCAM.xlsx"
+
+
+@lru_cache(maxsize=1)
+def _mapa_fabricantes() -> dict:
+    """{código Fxxxx: 'Fabricante externo'} (ej. F0028 -> FAW), de la hoja
+    'Diccionario Fabricantes' de las planillas de Modelos (la misma tabla que
+    usa Repuestos). Sirve para mostrar la descripción del fabricante en el
+    historial también en materiales que no la guardaron al asignarse."""
+    try:
+        import pandas as pd
+
+        d = pd.read_excel(FABRICANTES_DICCIONARIO_PATH, sheet_name="Diccionario Fabricantes",
+                          dtype=str, keep_default_na=False)
+        return {str(c).strip(): str(e).strip() for c, e in zip(d["Fabricante"], d["Fabricante externo"]) if str(c).strip()}
+    except Exception:
+        return {}
+
+
+def descripcion_fabricante(codigo: str) -> str:
+    return _mapa_fabricantes().get(str(codigo).strip(), "")
+
+
 _COLUMNAS_BUSQUEDA = ("CAST(numero_asignado AS TEXT)", "tipo", "tipo_material", "npf", "texto_breve",
                       "fabricante_codigo", "fabricante_desc")
 
@@ -263,6 +287,8 @@ def historial(limit: int = 100, offset: int = 0, buscar: str = "") -> list:
             reg["hora_fmt"] = hora
             for campo in ("texto_breve", "fabricante_codigo", "npf", "fabricante_desc"):
                 reg[campo] = reg[campo] or ""
+            if not reg["fabricante_desc"]:
+                reg["fabricante_desc"] = descripcion_fabricante(reg["fabricante_codigo"])
         return registros
     finally:
         conn.close()
