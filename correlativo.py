@@ -17,7 +17,7 @@ import json
 from functools import lru_cache
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "data" / "db" / "correlativos.db"
@@ -66,9 +66,20 @@ def _get_conn():
         ("npf", "TEXT"),
         ("fabricante_desc", "TEXT"),
         ("oculto", "INTEGER NOT NULL DEFAULT 0"),
+        ("generacion_id", "INTEGER"),
     ):
         if columna not in existentes:
             conn.execute(f"ALTER TABLE historial_asignaciones ADD COLUMN {columna} {definicion}")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS generaciones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fecha TEXT NOT NULL,
+            nombre_archivo TEXT NOT NULL,
+            tipo_id TEXT,
+            archivo TEXT NOT NULL,
+            total_materiales INTEGER NOT NULL DEFAULT 0
+        )
+    """)
     conn.execute("CREATE TABLE IF NOT EXISTS migraciones (nombre TEXT PRIMARY KEY, fecha TEXT NOT NULL)")
     conn.commit()
     return conn
@@ -194,7 +205,7 @@ def npfs_ya_asignados(tipo: str, npfs) -> dict:
     """
     De los NPF dados, cuáles ya tienen un número asignado en el historial para
     ese `tipo` (la misma etiqueta que se guarda al asignar, ej. "modelos · ZCAM").
-    Compara sin mayúsculas ni espacios sobrantes. Devuelve
+    Compara sin mayúsculas ni espacios sobrantes; los registros ocultos no cuentan. Devuelve
     {NPF normalizado: (número, fecha ISO)} con la asignación más reciente.
     """
     buscados = sorted({str(n).strip().upper() for n in npfs if str(n).strip()})
@@ -206,7 +217,7 @@ def npfs_ya_asignados(tipo: str, npfs) -> dict:
             marcas = ",".join("?" * len(lote))
             for npf, numero, fecha in conn.execute(
                 f"""SELECT UPPER(TRIM(npf)), numero_asignado, fecha FROM historial_asignaciones
-                    WHERE tipo = ? AND UPPER(TRIM(npf)) IN ({marcas})
+                    WHERE tipo = ? AND oculto = 0 AND UPPER(TRIM(npf)) IN ({marcas})
                     ORDER BY fecha, id""",
                 [tipo, *lote],
             ):
@@ -269,13 +280,14 @@ def historial(limit: int = 100, offset: int = 0, buscar: str = "") -> list:
     try:
         cur = conn.execute(
             f"""SELECT numero_asignado, tipo, texto_breve, fabricante_codigo, fecha,
-                       npf, fabricante_desc
+                       npf, fabricante_desc, id, generacion_id
                 FROM historial_asignaciones
                 WHERE {where}
                 ORDER BY fecha DESC, numero_asignado DESC LIMIT ? OFFSET ?""",
             params + [limit, offset],
         )
-        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "npf", "fabricante_desc"]
+        cols = ["numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "npf", "fabricante_desc",
+                "id", "generacion_id"]
         registros = [dict(zip(cols, r)) for r in cur.fetchall()]
         for reg in registros:
             # Se guarda en formato ISO ("2026-10-01T14:32:07") para que el TEXT
@@ -373,7 +385,7 @@ def aplicar_ajustes_contadores() -> list:
     Aplica los ajustes de config/ajustes_contadores.json (ej. empezar a dar
     números desde otro valor para una capacitación). Cada ajuste se aplica una
     sola vez (queda marcado en 'migraciones') y solo mueve el contador hacia
-    adelante: si ya pasó de ese número no lo toca, para no reutilizar nunca un
+    adelante ("siguiente": fija el próximo número; "avanzar": salta N desde donde esté): si ya pasó de ese número no lo toca, para no reutilizar nunca un
     número ya entregado. Devuelve un texto por cada ajuste que cambió algo.
     """
     if not AJUSTES_CONTADORES_PATH.exists():
@@ -389,12 +401,57 @@ def aplicar_ajustes_contadores() -> list:
                 if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (a["id"],)).fetchone():
                     continue
                 rango = obtener_rango(a["contador"])
+                fila = conn.execute("SELECT ultimo_valor FROM contadores WHERE nombre = ?", (a["contador"],)).fetchone()
+                if "avanzar" in a:
+                    # Relativo: salta N números desde donde esté el contador ahora.
+                    actual = fila[0] if fila else rango["min"] - 1
+                    nuevo = actual + a["avanzar"]
+                    if nuevo > rango["max"]:
+                        raise RangoNoConfiguradoError(f"Ajuste '{a['id']}': el contador se pasaría del rango {rango['min']}-{rango['max']}.")
+                    if fila is None:
+                        conn.execute(
+                            "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
+                            (a["contador"], nuevo, rango["min"], rango["max"]),
+                        )
+                    else:
+                        conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (nuevo, a["contador"]))
+                    aplicados.append(f"{a['contador']}: avanzó {a['avanzar']} (siguiente número {nuevo + 1})")
+                    conn.execute(
+                        "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
+                        (a["id"], datetime.now().isoformat(timespec="seconds")),
+                    )
+                    continue
                 if not rango["min"] <= a["siguiente"] <= rango["max"]:
                     raise RangoNoConfiguradoError(
                         f"Ajuste '{a['id']}': {a['siguiente']} está fuera del rango {rango['min']}-{rango['max']}."
                     )
                 objetivo = a["siguiente"] - 1
-                fila = conn.execute("SELECT ultimo_valor FROM contadores WHERE nombre = ?", (a["contador"],)).fetchone()
+                if a.get("reiniciar"):
+                    # Reinicio (ej. otra capacitación): fija el contador en ese
+                    # número aunque ya esté más adelante, y oculta del historial
+                    # los materiales de ese contador desde ese número en adelante
+                    # (reversible: oculto=0), para que no choquen con los nuevos
+                    # ni bloqueen su NPF.
+                    if fila is None:
+                        conn.execute(
+                            "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
+                            (a["contador"], objetivo, rango["min"], rango["max"]),
+                        )
+                    else:
+                        conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (objetivo, a["contador"]))
+                    ocultos = conn.execute(
+                        "UPDATE historial_asignaciones SET oculto = 1 WHERE nombre_contador = ? AND numero_asignado >= ? AND oculto = 0",
+                        (a["contador"], a["siguiente"]),
+                    ).rowcount
+                    aplicados.append(
+                        f"{a['contador']}: reiniciado, siguiente número {a['siguiente']} (antes {fila[0] + 1 if fila else '—'}; "
+                        f"{ocultos} registro(s) del historial ocultados)"
+                    )
+                    conn.execute(
+                        "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
+                        (a["id"], datetime.now().isoformat(timespec="seconds")),
+                    )
+                    continue
                 if fila is None:
                     conn.execute(
                         "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
@@ -412,3 +469,114 @@ def aplicar_ajustes_contadores() -> list:
         finally:
             conn.close()
     return aplicados
+
+
+GENERACIONES_DIR = Path(__file__).parent / "data" / "generaciones"
+HORAS_GUARDADO_PLANILLA = 48
+
+
+def limpiar_planillas_vencidas() -> int:
+    """
+    Borra del disco las planillas guardadas hace más de HORAS_GUARDADO_PLANILLA
+    horas (para no acumular archivos). El registro de la generación y los
+    materiales del historial se conservan; solo se pierde la planilla (la
+    página del material avisa que ya venció). Devuelve cuántas borró.
+    """
+    limite = (datetime.now() - timedelta(hours=HORAS_GUARDADO_PLANILLA)).isoformat(timespec="seconds")
+    borradas = 0
+    with _lock:
+        conn = _get_conn()
+        try:
+            vencidas = conn.execute(
+                "SELECT id, archivo FROM generaciones WHERE archivo != '' AND fecha < ?", (limite,)
+            ).fetchall()
+            for gen_id, archivo in vencidas:
+                try:
+                    (GENERACIONES_DIR / archivo).unlink(missing_ok=True)
+                except OSError:
+                    continue  # no se pudo borrar ahora: se reintenta en la próxima limpieza
+                conn.execute("UPDATE generaciones SET archivo = '' WHERE id = ?", (gen_id,))
+                borradas += 1
+            conn.commit()
+        finally:
+            conn.close()
+    return borradas
+
+
+def registrar_generacion(nombre_archivo: str, tipo_id: str, contenido: bytes, asignaciones: list) -> int:
+    """
+    Guarda en disco la planilla generada y la asocia a los materiales que
+    recibieron número en ella, para poder volver a descargarla desde el
+    historial (la descarga inmediata es de un solo uso: si el usuario
+    recarga la página antes de bajarla, sin esto se perdería).
+
+    `asignaciones` es una lista de (nombre_contador, número asignado).
+    Devuelve el id de la generación.
+    """
+    GENERACIONES_DIR.mkdir(parents=True, exist_ok=True)
+    limpiar_planillas_vencidas()
+    with _lock:
+        conn = _get_conn()
+        try:
+            cur = conn.execute(
+                "INSERT INTO generaciones (fecha, nombre_archivo, tipo_id, archivo, total_materiales) VALUES (?, ?, ?, ?, ?)",
+                (datetime.now().isoformat(timespec="seconds"), nombre_archivo, tipo_id, "", len(asignaciones)),
+            )
+            gen_id = cur.lastrowid
+            archivo = f"{gen_id}_{nombre_archivo}"
+            (GENERACIONES_DIR / archivo).write_bytes(contenido)
+            conn.execute("UPDATE generaciones SET archivo = ? WHERE id = ?", (archivo, gen_id))
+            conn.executemany(
+                "UPDATE historial_asignaciones SET generacion_id = ? WHERE nombre_contador = ? AND numero_asignado = ?",
+                [(gen_id, contador, numero) for contador, numero in asignaciones],
+            )
+            conn.commit()
+            return gen_id
+        finally:
+            conn.close()
+
+
+def obtener_material(registro_id: int):
+    """Un registro del historial (por su id) con los datos de la planilla en la
+    que se generó, si hay una guardada. None si no existe o está oculto."""
+    conn = _get_conn()
+    try:
+        r = conn.execute(
+            """SELECT h.id, h.numero_asignado, h.tipo, h.texto_breve, h.fabricante_codigo, h.fecha,
+                      h.npf, h.fabricante_desc, h.generacion_id,
+                      g.nombre_archivo, g.fecha, g.total_materiales, g.archivo
+               FROM historial_asignaciones h LEFT JOIN generaciones g ON g.id = h.generacion_id
+               WHERE h.id = ? AND h.oculto = 0 AND h.nombre_contador != 'material_global'""",
+            (registro_id,),
+        ).fetchone()
+        if r is None:
+            return None
+        material = dict(zip(
+            ["id", "numero_asignado", "tipo", "texto_breve", "fabricante_codigo", "fecha", "npf", "fabricante_desc",
+             "generacion_id", "planilla_nombre", "planilla_fecha", "planilla_total", "planilla_archivo"], r))
+        for campo in ("texto_breve", "fabricante_codigo", "npf", "fabricante_desc"):
+            material[campo] = material[campo] or ""
+        if not material["fabricante_desc"]:
+            material["fabricante_desc"] = descripcion_fabricante(material["fabricante_codigo"])
+        material["fecha_fmt"], _, material["hora_fmt"] = material["fecha"].partition("T")
+        archivo = material["planilla_archivo"]
+        material["planilla_disponible"] = bool(archivo) and (GENERACIONES_DIR / archivo).is_file()
+        material["planilla_vencida"] = material["generacion_id"] is not None and not material["planilla_disponible"]
+        return material
+    finally:
+        conn.close()
+
+
+def obtener_planilla(generacion_id: int):
+    """(ruta del archivo, nombre para descargar) de una planilla guardada, o None."""
+    conn = _get_conn()
+    try:
+        r = conn.execute("SELECT archivo, nombre_archivo FROM generaciones WHERE id = ?", (generacion_id,)).fetchone()
+    finally:
+        conn.close()
+    if not r or not r[0]:
+        return None
+    ruta = (GENERACIONES_DIR / r[0]).resolve()
+    if GENERACIONES_DIR.resolve() not in ruta.parents or not ruta.is_file():
+        return None
+    return ruta, r[1]

@@ -506,3 +506,10 @@ main.main-ancho { max-width: 1100px; }
 .paginacion a { color: var(--accent-hover); font-weight: 500; text-decoration: none; }
 .paginacion a:hover { color: var(--accent); }
 .historial-descarga { flex: 0 0 auto; margin-left: auto; padding: 9px 16px; }
+
+.num-link { color: var(--accent-hover); font-weight: 600; text-decoration: none; border-bottom: 1px solid transparent; }
+.num-link:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+.detalle-material { display: grid; grid-template-columns: 140px 1fr; gap: 10px 16px; margin: 18px 0 26px; font-size: 14px; }
+.detalle-material dt { color: var(--ink-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; padding-top: 2px; }
+.detalle-material dd { margin: 0; }

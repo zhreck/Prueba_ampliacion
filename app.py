@@ -25,6 +25,11 @@ except Exception as e:  # nunca impedir que la app arranque por esto
     app.logger.error("No se pudo importar CorrelativosRepuestos.xlsx: %s", e)
 
 try:
+    correlativo.limpiar_planillas_vencidas()
+except Exception as e:
+    app.logger.error("No se pudieron limpiar las planillas vencidas: %s", e)
+
+try:
     for _ajuste in correlativo.aplicar_ajustes_contadores():
         app.logger.info("Ajuste de contador: %s", _ajuste)
 except Exception as e:
@@ -185,12 +190,10 @@ def procesar():
             generar_sap = False
         else:
             filiales_unicas = resultado_df["FILIAL CODIGO"].unique()
-            # Repuestos ya resuelve canales/grupos/centros por la filial de cada
-            # fila, así que acepta varias filiales en el mismo archivo.
-            if len(filiales_unicas) > 1 and tipo_id != "repuestos":
-                flash("⚠️ Entrada con múltiples filiales en el mismo archivo. Solo se puede generar SAP para una filial a la vez.", "error")
-                return volver
-            filial = str(filiales_unicas[0]).strip()
+            # Tanto Repuestos como Modelos resuelven canales/grupos/centros por la
+            # filial de cada fila, así que aceptan varias filiales en el mismo
+            # archivo (todas salen juntas en una sola hoja).
+            filiales_unicas = [str(f).strip() for f in filiales_unicas]
 
             try:
                 # Repuestos: "Serie o Lote?" define ZRP1/ZRP2/ZRP3 (columna
@@ -200,15 +203,17 @@ def procesar():
                 # la columna "TIPO MATERIAL" del input es solo una categoría
                 # para la fórmula de Excel (CAMIONES/VEHICULOS/ZMAQ), NO el
                 # tipo de material SAP real — ese sale de la FILIAL (ver
-                # FILIAL_A_TIPO_MATERIAL), que ya se validó como única más
-                # arriba, así que acá hay un solo tipo de material por archivo.
+                # FILIAL_A_TIPO_MATERIAL): un archivo puede traer varias
+                # filiales (y por lo tanto más de un tipo de material, ej.
+                # VF00=ZVEH y VA00=ZCAM), cada tipo con su plantilla y su rango.
                 if tipo_id == "repuestos":
                     col_tipo_sap = "TIPO MATERIAL REPUESTO"
                     tipos_sap = ("ZRP1", "ZRP2", "ZRP3")
                 else:
                     col_tipo_sap = None
-                    tipos_sap = (salida_sap.filial_a_tipo_material(filial),)
+                    tipos_sap = tuple(dict.fromkeys(salida_sap.filial_a_tipo_material(f) for f in filiales_unicas))
                 partes_sap_por_tipo = {}
+                asignaciones = []  # (contador, número) de todo lo asignado, para enlazarlo a la planilla guardada
                 pendientes = {}
                 obligatorios_vacios = []
                 marcas_sin_categoria = set()
@@ -216,7 +221,12 @@ def procesar():
                 npf_largos = []
                 npf_duplicados = []
                 for tipo_material_sap in tipos_sap:
-                    subset = resultado_df if col_tipo_sap is None else resultado_df[resultado_df[col_tipo_sap] == tipo_material_sap]
+                    if col_tipo_sap is None:
+                        # Las filas de las filiales que pertenecen a este tipo de material.
+                        filiales_del_tipo = [f for f in filiales_unicas if salida_sap.filial_a_tipo_material(f) == tipo_material_sap]
+                        subset = resultado_df[resultado_df["FILIAL CODIGO"].astype(str).str.strip().isin(filiales_del_tipo)]
+                    else:
+                        subset = resultado_df[resultado_df[col_tipo_sap] == tipo_material_sap]
                     if subset.empty:
                         continue
                     if tipo_id == "repuestos" and tipo_material_sap != "ZRP1":
@@ -228,6 +238,9 @@ def procesar():
                     if tipo_id == "repuestos":
                         df_parte = salida_sap.normalizar_df_sap(df_parte)
                     partes_sap_por_tipo[tipo_material_sap] = df_parte
+                    asignaciones.extend(
+                        (meta_parte["rango_correlativo"], n) for n in meta_parte.get("numeros_asignados", {}).values()
+                    )
                     pendientes.update(meta_parte.get("campos_pendientes", {}))
                     obligatorios_vacios.extend(meta_parte.get("columnas_obligatorias_vacias", []))
                     marcas_sin_categoria.update(meta_parte.get("marcas_sin_categoria_valoracion", []))
@@ -300,8 +313,14 @@ def procesar():
         # desde la 2), sin colores ni el layout real.
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
-        for tipo_material_sap, df_parte in partes_sap_por_tipo.items():
-            salida_sap.escribir_hoja_sap_modelos(wb, df_parte, tipo_material_sap)
+        # Una sola hoja con todas las filiales/tipos de material del archivo.
+        tipos_en_archivo = list(partes_sap_por_tipo)
+        salida_sap.escribir_hoja_sap_modelos(
+            wb,
+            pd.concat(list(partes_sap_por_tipo.values()), ignore_index=True),
+            tipos_en_archivo[0],
+            titulo=tipos_en_archivo[0] if len(tipos_en_archivo) == 1 else "MODELOS",
+        )
         if df_pendientes is not None:
             ws_pend = wb.create_sheet(title="PENDIENTES")
             ws_pend.append(list(df_pendientes.columns))
@@ -320,6 +339,14 @@ def procesar():
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"
     nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+    if generar_sap and asignaciones:
+        # Copia permanente: se puede volver a bajar desde el Historial aunque
+        # el usuario no haya descargado el archivo o recargue la página.
+        try:
+            correlativo.registrar_generacion(nombre_salida, tipo_id, buffer.getvalue(), asignaciones)
+        except Exception:
+            app.logger.exception("No se pudo guardar la planilla generada en el historial")
 
     token = uuid.uuid4().hex
     _DESCARGAS_PENDIENTES[token] = (buffer.getvalue(), nombre_salida, tipo_id)
@@ -383,6 +410,30 @@ def historial():
     return render_template(
         "historial.html", estados=estados, registros=registros,
         buscar=buscar, pagina=pagina, paginas=paginas, total=total,
+    )
+
+
+@app.route("/historial/material/<int:registro_id>")
+def historial_material(registro_id):
+    correlativo.limpiar_planillas_vencidas()
+    material = correlativo.obtener_material(registro_id)
+    if material is None:
+        abort(404)
+    return render_template("historial_material.html", m=material)
+
+
+@app.route("/historial/planilla/<int:generacion_id>")
+def historial_planilla(generacion_id):
+    correlativo.limpiar_planillas_vencidas()
+    planilla = correlativo.obtener_planilla(generacion_id)
+    if planilla is None:
+        abort(404)
+    ruta, nombre = planilla
+    return send_file(
+        ruta,
+        as_attachment=True,
+        download_name=nombre,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
 

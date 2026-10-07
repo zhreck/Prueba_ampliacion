@@ -519,6 +519,15 @@ def _leer_input(file_storage, cfg: dict) -> pd.DataFrame:
         if columna_filial != "FILIAL CODIGO":
             df = df.rename(columns={columna_filial: "FILIAL CODIGO"})
 
+    # Una opción de sociedad que cubre varias filiales (ej. 'Tattersall
+    # Automotriz y Maco Tattersall' -> "VF00+VA00") se separa en UNA fila por
+    # filial: cada una se amplía a los centros de su filial y recibe su propio
+    # número según su tipo de material.
+    if "FILIAL CODIGO" in df.columns and df["FILIAL CODIGO"].astype(str).str.contains("+", regex=False).any():
+        df["FILIAL CODIGO"] = df["FILIAL CODIGO"].astype(str).str.split("+")
+        df = df.explode("FILIAL CODIGO").reset_index(drop=True)
+        df["FILIAL CODIGO"] = df["FILIAL CODIGO"].str.strip()
+
     # Convertir columnas especificadas a texto para evitar notación científica y pérdida de ceros
     for col in text_columns:
         if col in df.columns:
@@ -857,6 +866,8 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             ]
 
     area_por_npf = cfg.get("area_por_npf")
+    reglas_amplia = cfg.get("reglas_marca_amplia_a_filiales", [])
+    ignorar_matriz = [False]  # True mientras se procesa una fila cuya regla manda sobre la matriz de disponibilidad
 
     disponibilidad = _cargar_disponibilidad(cfg)
     bloqueado_valor = cfg.get("disponibilidad", {}).get("valor_bloqueado", 0)
@@ -870,7 +881,7 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
         """Saca del match los centros que la matriz de disponibilidad marca
         como bloqueados para ese fabricante, aunque la tabla de referencia
         traiga una fila (dato posiblemente mal cargado ahí)."""
-        if disponibilidad is None or matches_df.empty:
+        if disponibilidad is None or ignorar_matriz[0] or matches_df.empty:
             return matches_df, []
         centros_excluidos = []
         indices_ok = []
@@ -896,7 +907,7 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
         devuelve False (es un fabricante nuevo/no catalogado: sigue el
         comportamiento normal de fallback).
         """
-        if disponibilidad is None or ref_df_filial.empty:
+        if disponibilidad is None or ignorar_matriz[0] or ref_df_filial.empty:
             return False
         centros_filial = ref_df_filial["CENTRO"].astype(str).str.strip().unique()
         estados = [
@@ -914,7 +925,23 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
         ref_df = ref_df_completa
         if filial_column:
             filial_fila = str(fila_input.get("FILIAL CODIGO", "")).strip()
-            ref_df = ref_df[ref_df[filial_column] == filial_fila]
+            filiales_ref = [filial_fila]
+            centros_excluidos_regla: list[str] = []
+            ignorar_matriz[0] = False
+            for regla in reglas_amplia:
+                if (
+                    filial_fila in regla["filiales_origen"]
+                    and str(fila_input.get(key_input_marca, "")).strip() == regla["marca"]
+                    and regla.get("fabricante", valor_key) == valor_key
+                ):
+                    # Ej. MAXIMAL / LIUGONG en Maquinarias: además de los
+                    # centros de su sociedad se amplía a los de otras filiales.
+                    filiales_ref += [f for f in regla["filiales_extra"] if f not in filiales_ref]
+                    centros_excluidos_regla += regla.get("centros_excluidos", [])
+                    ignorar_matriz[0] = ignorar_matriz[0] or regla.get("ignorar_disponibilidad", False)
+            ref_df = ref_df[ref_df[filial_column].isin(filiales_ref)]
+            if centros_excluidos_regla:
+                ref_df = ref_df[~ref_df["CENTRO"].astype(str).str.strip().isin(centros_excluidos_regla)]
 
         if key_reference_marca:
             # Acota también por MARCA antes de buscar por fabricante (pedido

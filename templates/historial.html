@@ -41,7 +41,7 @@
     <tbody>
       {% for r in registros %}
       <tr>
-        <td class="num">{{ r.numero_asignado }}</td>
+        <td class="num"><a class="num-link" href="{{ url_for('historial_material', registro_id=r.id) }}">{{ r.numero_asignado }}</a></td>
         <td>{{ r.tipo }}</td>
         <td class="num">{{ r.npf }}</td>
         <td class="num">{{ r.fabricante_codigo }}{% if r.fabricante_desc %} · {{ r.fabricante_desc }}{% endif %}</td>

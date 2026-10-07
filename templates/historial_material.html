@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="panel">
+
+  <a class="back-button" href="{{ url_for('historial') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5m0 0l6-6m-6 6l6 6"></path>
+    </svg>
+    Volver al historial
+  </a>
+
+  <h2>Material {{ m.numero_asignado }}</h2>
+  <p class="lede">Datos con los que se asignó este número.</p>
+
+  <dl class="detalle-material">
+    <dt>Tipo</dt><dd>{{ m.tipo }}</dd>
+    <dt>NPF</dt><dd class="num">{{ m.npf or "—" }}</dd>
+    <dt>Fabricante</dt><dd class="num">{{ m.fabricante_codigo or "—" }}{% if m.fabricante_desc %} · {{ m.fabricante_desc }}{% endif %}</dd>
+    <dt>Texto breve</dt><dd>{{ m.texto_breve or "—" }}</dd>
+    <dt>Fecha</dt><dd class="num">{{ m.fecha_fmt }}</dd>
+    <dt>Hora</dt><dd class="num">{{ m.hora_fmt }}</dd>
+  </dl>
+
+  <div class="step">
+    <h2>Planilla generada</h2>
+  </div>
+  {% if m.planilla_disponible %}
+    <p class="lede">
+      Este material salió en <strong>{{ m.planilla_nombre }}</strong>
+      ({{ m.planilla_total }} material{{ "es" if m.planilla_total != 1 else "" }}, generada el {{ m.planilla_fecha.replace("T", " ")[:16] }}).
+    </p>
+    <div class="plantilla-links-grupo">
+      <a class="plantilla-link-boton" href="{{ url_for('historial_planilla', generacion_id=m.generacion_id) }}">Descargar planilla</a>
+    </div>
+  {% elif m.planilla_vencida %}
+    <p class="lede">Este material salió en <strong>{{ m.planilla_nombre }}</strong>, pero la planilla ya no está disponible: se guarda solo 48 horas desde que se genera. Si la necesitas, hay que generarla de nuevo.</p>
+  {% else %}
+    <p class="lede">No hay una planilla guardada para este material (se generó antes de que el historial guardara las planillas, o se cargó desde el archivo de correlativos).</p>
+  {% endif %}
+</div>
+{% endblock %}

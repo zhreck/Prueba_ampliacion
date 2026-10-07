@@ -21,13 +21,12 @@
     { "columna": "COMBUSTIBLE", "rango": "NPF!$A$4:$A$10" },
     { "columna": "TRACCION", "rango": "NPF!$J$4:$J$10" },
     { "columna": "TRANSMISION", "rango": "NPF!$D$4:$D$7" },
-    { "columna": "DECIMALES CILINDRADA (1 o 2)", "rango": "NPF!$U$4:$U$5" },
     { "columna": "NOMBRE JERARQUIA", "rango": "'Diccionario Jerarquías'!$F$2:$F$274" }
   ],
   "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14, que openpyxl descarta al abrir -- ver nota en engine._agregar_validaciones_desde_traduccion) del archivo original plantilla_modelos_ZVEH_ZCAM.xlsx. NOMBRE JERARQUIA apunta a la hoja 'Diccionario Jerarquías' BUNDLEADA en la plantilla (no a DiccionarioSAP.xlsx, que no viaja con el archivo descargable) -- el motor igual valida contra la tabla completa de DiccionarioSAP.xlsx al procesar, así que un texto que no calce ahí se rechaza con aviso en vez de generar algo mal.",
 
   "columnas_formula": [
-    "TEXTO BREBE CALCULADO (MAX 40)",
+    "TEXTO BREVE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",
     "LARGO TEXTO BREVE (máx 40)",
     "LARGO NPF (máx 30)"
@@ -37,7 +36,7 @@
   "input_columns": [
     "FILIAL CODIGO",
     "TIPO MATERIAL",
-    "TEXTO BREBE CALCULADO (MAX 40)",
+    "TEXTO BREVE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",
     "MODELO",
     "VERSION",
@@ -51,7 +50,6 @@
     "NOMBRE MARCA",
     "NOMBRE FABRICANTE",
     "GRUPO IMPUTACION",
-    "DECIMALES CILINDRADA (1 o 2)",
     "LARGO TEXTO BREVE (máx 40)",
     "LARGO NPF (máx 30)"
   ],
@@ -65,7 +63,7 @@
   ],
 
   "renombrar_columnas": {
-    "TEXTO BREBE CALCULADO (MAX 40)": "TEXTO BREVE",
+    "TEXTO BREVE CALCULADO (MAX 40)": "TEXTO BREVE",
     "NPF CALCULADO (MAX 30)": "NPF"
   },
 
@@ -157,12 +155,14 @@
         "Tattersall Multimaq": "VD00",
         "Tattersall Industrial y Maquinarias": "VE00",
         "Tattersall Automotriz": "VF00",
+        "Tattersall Automotriz y Maco Tattersall": "VF00+VA00",
         "VA00": "VA00",
         "VC00": "VC00",
         "VD00": "VD00",
         "VE00": "VE00",
         "VF00": "VF00"
       },
+      "_nota_filial_doble": "Pedido de Seba: 'Tattersall Automotriz y Maco Tattersall' amplía a las 2 filiales (VF00 y VA00), cada una con sus centros. El valor 'VF00+VA00' se separa en una fila por filial (ver engine._leer_input); cada una sale con su tipo de material (ZVEH/ZCAM) y su número.",
       "_nota": "Mismo mapa que config/tipos/modelos.json (confirmado por Seba). Este input es solo Vehículos y Camiones, en la práctica solo se usa VF00 (ZVEH) y VA00 (ZCAM), pero se deja completo por si algún día Maquinarias también vende 'camiones' bajo este mismo esquema."
     },
     {

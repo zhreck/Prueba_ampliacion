@@ -387,6 +387,7 @@ def aplicar_plantilla_sap(
         "transaccion": TRANSACCION_VALOR,
         "total_filas": len(df_sap),
         "numeros_asignados": numeros_asignados,
+        "rango_correlativo": rango_corr_nombre,
         "campos_pendientes": campos_pendientes,
         "columnas_obligatorias_vacias": _obligatorios_vacios(df_sap, header, plantilla, bloque, primeras),
         "marcas_sin_categoria_valoracion": marcas_sin_categoria,
@@ -473,11 +474,14 @@ PLANILLA_CARGA_MODELOS = {
 FILAS_ENCABEZADO_MODELOS = 5
 
 
-def escribir_hoja_sap_modelos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, tipo_material: str) -> None:
+def escribir_hoja_sap_modelos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, tipo_material: str, titulo: Optional[str] = None) -> None:
     """
     Igual que escribir_hoja_sap_repuestos pero para Modelos (ZVEH/ZCAM/ZMAQ):
     clona las primeras 5 filas del ejemplo real de ESE tipo de material
     (PLANILLA_CARGA_MODELOS) y agrega los datos generados desde la fila 6.
+    Todo va en UNA sola hoja ('titulo', por defecto el tipo de material): si
+    el archivo mezcla filiales/tipos de material, `tipo_material` solo
+    decide de cuál ejemplo se copian los encabezados.
     """
     origen = PLANILLA_CARGA_MODELOS.get(tipo_material)
     if not origen:
@@ -489,15 +493,9 @@ def escribir_hoja_sap_modelos(wb: "openpyxl.Workbook", df_sap: pd.DataFrame, tip
     wb_origen = openpyxl.load_workbook(ruta, data_only=True)
     ws_origen = wb_origen[nombre_hoja]
 
-    ws = wb.create_sheet(title=tipo_material)
+    ws = wb.create_sheet(title=titulo or tipo_material)
     engine._clonar_hoja(ws_origen, ws, max_filas=FILAS_ENCABEZADO_MODELOS)
     fila_destino = FILAS_ENCABEZADO_MODELOS + 1
-    for fila in df_sap.itertuples(index=False):
-        for col_idx, valor in enumerate(fila, start=1):
-            ws.cell(row=fila_destino, column=col_idx, value=valor)
-        fila_destino += 1
-
-    fila_destino = FILAS_ENCABEZADO_REPUESTOS + 1
     for fila in df_sap.itertuples(index=False):
         for col_idx, valor in enumerate(fila, start=1):
             ws.cell(row=fila_destino, column=col_idx, value=valor)

@@ -17,7 +17,7 @@
   "input_columns": [
     "FILIAL CODIGO",
     "TIPO MATERIAL",
-    "TEXTO BREBE CALCULADO (MAX 40)",
+    "TEXTO BREVE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",
     "MODELO",
     "CATEGORIA",
@@ -27,7 +27,6 @@
     "NOMBRE MARCA",
     "NOMBRE FABRICANTE",
     "GRUPO IMPUTACION",
-    "DECIMALES CILINDRADA (1 o 2)",
     "LARGO TEXTO BREVE (máx 40)",
     "LARGO NPF (máx 30)"
   ],
@@ -44,7 +43,7 @@
   "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14) del archivo original plantilla_modelos_maquinarias.xlsx. GRUPO ARTICULO y GRUPO IMPUTACION quedan fijas a una sola opción (MAQ. INDUSTRIAL / Unidad Nueva) porque así venía el archivo original -- más angosto que lo que el diccionario completo permitiría (ver traduccion_nombres), pero es lo correcto para Maquinaria. NOMBRE JERARQUIA ver nota equivalente en modelos_vehiculos_camiones.json.",
 
   "columnas_formula": [
-    "TEXTO BREBE CALCULADO (MAX 40)",
+    "TEXTO BREVE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",
     "LARGO TEXTO BREVE (máx 40)",
     "LARGO NPF (máx 30)"
@@ -59,7 +58,7 @@
   ],
 
   "renombrar_columnas": {
-    "TEXTO BREBE CALCULADO (MAX 40)": "TEXTO BREVE",
+    "TEXTO BREVE CALCULADO (MAX 40)": "TEXTO BREVE",
     "NPF CALCULADO (MAX 30)": "NPF"
   },
 
@@ -88,6 +87,25 @@
     "area_si_termina": "Vta. Electromovilidad Unidades Nuevas",
     "area_si_no": "Vta. Unidades Nuevas"
   },
+
+  "reglas_marca_amplia_a_filiales": [
+    {
+      "_nota": "Pedido de Seba: la marca MAXIMAL (180), aunque la sociedad del input diga 'Tattersall Maquinarias' (VC00), se amplía igual a los centros de VE00 (VE00 y VE01), además de los de VC00.",
+      "marca": "180",
+      "filiales_origen": ["VC00"],
+      "filiales_extra": ["VE00"]
+    },
+    {
+      "_nota": "Pedido de Seba: LIUGONG (150) con fabricante F0016 se amplía a los centros de VC00 (todos menos VC08) y de VD00, tanto si el input dice 'Tattersall Maquinarias' (VC00) como 'Tattersall Multimaq' (VD00). La matriz de disponibilidad (Centros_UN_RP.xlsx) tiene F0016 bloqueado en los centros VC; esta regla manda sobre ella.",
+      "marca": "150",
+      "fabricante": "F0016",
+      "filiales_origen": ["VC00", "VD00"],
+      "filiales_extra": ["VC00", "VD00"],
+      "centros_excluidos": ["VC08"],
+      "ignorar_disponibilidad": true
+    }
+  ],
+  "_reglas_marca_amplia_nota": "Reglas solo de la planilla de Maquinarias. Se aplican cuando la filial del input está en 'filiales_origen' y coincide la marca (y el fabricante si se indica). Ver engine.procesar.",
 
   "key_input": "FABRICANTE CODIGO",
   "key_reference": "COD_FABRICANTE",
