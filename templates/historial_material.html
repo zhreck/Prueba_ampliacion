@@ -31,6 +31,7 @@
       ({{ m.planilla_total }} material{{ "es" if m.planilla_total != 1 else "" }}, generada el {{ m.planilla_fecha_fmt }}).
     </p>
     <div class="plantilla-links-grupo">
+      <a class="plantilla-link-boton" href="{{ url_for('historial_vista_previa', generacion_id=m.generacion_id, m=m.numero_asignado) }}">Vista previa</a>
       <a class="plantilla-link-boton" href="{{ url_for('historial_planilla', generacion_id=m.generacion_id) }}">Descargar planilla</a>
     </div>
   {% elif m.planilla_vencida %}

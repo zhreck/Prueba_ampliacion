@@ -215,6 +215,7 @@
       "ancho_nivel2": 5,
       "col_nivel3": "Nivel 3",
       "ancho_nivel3": 8,
+      "sin_relleno_niveles_vacios": true,
       "_nota": "Antes salía de la hoja 'Diccionario Jerarquías' de plantilla_modelos.xlsx (~350 filas, solo vehículos). Ahora sale de DiccionarioSAP.xlsx hoja 'jerarquia' (~2096 filas, cubre Repuestos Y Unidades en una sola tabla maestra) -- verificado contra el ejemplo real: 'DONGFENG AUT. UNIDAD - GASOLINA - PICK-UP' -> '000170000200000003' calza exacto con Materiales - Tattersall Automotriz.xlsx."
     }
   ]

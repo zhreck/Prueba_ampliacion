@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block main_class %}main-ancho{% endblock %}
+{% block content %}
+<div class="panel">
+
+  <a class="back-button" href="{{ request.referrer or url_for('historial') }}">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5m0 0l6-6m-6 6l6 6"></path>
+    </svg>
+    Volver
+  </a>
+
+  <h2>Vista previa · {{ nombre }}</h2>
+  <p class="lede">
+    {% if material and not ver_todo %}
+      Mostrando solo las filas del material <strong>{{ material }}</strong>.
+      <a class="plantilla-link" href="{{ url_for('historial_vista_previa', generacion_id=generacion_id, m=material, ver='todo') }}">Ver el inicio de toda la planilla</a>
+    {% else %}
+      Mostrando el inicio de la planilla (hasta {{ max_filas }} filas por hoja){% if material %}; las filas del material <strong>{{ material }}</strong> van resaltadas.
+      <a class="plantilla-link" href="{{ url_for('historial_vista_previa', generacion_id=generacion_id, m=material) }}">Ver solo ese material</a>{% endif %}
+    {% endif %}
+  </p>
+  <div class="plantilla-links-grupo">
+    <a class="plantilla-link-boton" href="{{ url_for('historial_planilla', generacion_id=generacion_id) }}">Descargar planilla</a>
+  </div>
+
+  {% for h in hojas %}
+    <h3 class="vp-hoja">Hoja {{ h.nombre }} <span class="vp-cuenta">({{ h.mostradas }} de {{ h.total }} fila{{ "s" if h.total != 1 else "" }})</span></h3>
+    <div class="vp-scroll">
+      <table class="vp-tabla">
+        <thead>
+          {% for fila in h.encabezado %}<tr>{% for c in fila %}<th>{{ c }}</th>{% endfor %}</tr>{% endfor %}
+        </thead>
+        <tbody>
+          {% for fila, marcada in h.filas %}
+            <tr{% if marcada and material %} class="vp-marcada"{% endif %}>{% for c in fila %}<td>{{ c }}</td>{% endfor %}</tr>
+          {% else %}
+            <tr><td colspan="{{ h.ancho or 1 }}">Sin filas para mostrar.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -26,6 +26,20 @@ RANGOS_CONFIG_PATH = Path(__file__).parent / "config" / "rangos_materiales.json"
 
 _lock = threading.Lock()
 
+ZONA_HORARIA = "America/Santiago"
+
+
+def ahora() -> datetime:
+    """Fecha y hora actuales en Chile (sin zona, para guardar tal cual). No se usa
+    datetime.now() a secas porque en el servidor (PythonAnywhere) la hora del
+    sistema es UTC y las fechas del historial salían 3-4 horas corridas."""
+    try:
+        from zoneinfo import ZoneInfo
+
+        return datetime.now(ZoneInfo(ZONA_HORARIA)).replace(tzinfo=None)
+    except Exception:  # sin base de zonas horarias: hora del sistema
+        return datetime.now()
+
 # Rangos default - estos están disponibles siempre
 DEFAULT_RANGOS = {
     "material_global": {"min": 1, "max": 5000000, "descripcion": "Ampliación original"},
@@ -179,7 +193,7 @@ def siguiente_numero(nombre_contador: str, range_min: int = None, range_max: int
                     tipo_material, npf, fabricante_desc, filiales)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (nombre_contador, nuevo_valor, tipo, texto_breve, fabricante_codigo,
-                 datetime.now().isoformat(timespec="seconds"), tipo_material, npf, fabricante_desc, filiales),
+                 ahora().isoformat(timespec="seconds"), tipo_material, npf, fabricante_desc, filiales),
             )
             conn.commit()
             return nuevo_valor
@@ -388,7 +402,7 @@ def importar_correlativos_repuestos() -> int:
                 conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (maximo, nombre_contador))
             conn.execute(
                 "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                (IMPORTACION_REPUESTOS_NOMBRE, datetime.now().isoformat(timespec="seconds")),
+                (IMPORTACION_REPUESTOS_NOMBRE, ahora().isoformat(timespec="seconds")),
             )
             conn.commit()
             return len(filas)
@@ -437,7 +451,7 @@ def aplicar_ajustes_contadores() -> list:
                     aplicados.append(f"{a['contador']}: avanzó {a['avanzar']} (siguiente número {nuevo + 1})")
                     conn.execute(
                         "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                        (a["id"], datetime.now().isoformat(timespec="seconds")),
+                        (a["id"], ahora().isoformat(timespec="seconds")),
                     )
                     continue
                 if not rango["min"] <= a["siguiente"] <= rango["max"]:
@@ -468,7 +482,7 @@ def aplicar_ajustes_contadores() -> list:
                     )
                     conn.execute(
                         "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                        (a["id"], datetime.now().isoformat(timespec="seconds")),
+                        (a["id"], ahora().isoformat(timespec="seconds")),
                     )
                     continue
                 if fila is None:
@@ -482,7 +496,7 @@ def aplicar_ajustes_contadores() -> list:
                     aplicados.append(f"{a['contador']}: siguiente número {a['siguiente']} (antes {fila[0] + 1})")
                 conn.execute(
                     "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                    (a["id"], datetime.now().isoformat(timespec="seconds")),
+                    (a["id"], ahora().isoformat(timespec="seconds")),
                 )
             conn.commit()
         finally:
@@ -501,7 +515,7 @@ def limpiar_planillas_vencidas() -> int:
     materiales del historial se conservan; solo se pierde la planilla (la
     página del material avisa que ya venció). Devuelve cuántas borró.
     """
-    limite = (datetime.now() - timedelta(hours=HORAS_GUARDADO_PLANILLA)).isoformat(timespec="seconds")
+    limite = (ahora() - timedelta(hours=HORAS_GUARDADO_PLANILLA)).isoformat(timespec="seconds")
     borradas = 0
     with _lock:
         conn = _get_conn()
@@ -539,7 +553,7 @@ def registrar_generacion(nombre_archivo: str, tipo_id: str, contenido: bytes, as
         try:
             cur = conn.execute(
                 "INSERT INTO generaciones (fecha, nombre_archivo, tipo_id, archivo, total_materiales) VALUES (?, ?, ?, ?, ?)",
-                (datetime.now().isoformat(timespec="seconds"), nombre_archivo, tipo_id, "", len(asignaciones)),
+                (ahora().isoformat(timespec="seconds"), nombre_archivo, tipo_id, "", len(asignaciones)),
             )
             gen_id = cur.lastrowid
             archivo = f"{gen_id}_{nombre_archivo}"
@@ -700,9 +714,55 @@ def importar_rangos_modelos() -> int:
                     conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (maximo, contador))
             conn.execute(
                 "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                (migracion, datetime.now().isoformat(timespec="seconds")),
+                (migracion, ahora().isoformat(timespec="seconds")),
             )
             conn.commit()
             return len(filas)
+        finally:
+            conn.close()
+
+
+def _a_hora_chile(fecha_iso: str, zona_origen=None) -> str:
+    """Convierte una fecha guardada con la hora del sistema (zona_origen, por
+    defecto la del equipo) a hora de Chile. Si el equipo ya está en Chile no
+    cambia nada."""
+    from zoneinfo import ZoneInfo
+
+    dt = datetime.fromisoformat(fecha_iso)
+    dt = dt.replace(tzinfo=zona_origen) if zona_origen is not None else dt.astimezone()
+    return dt.astimezone(ZoneInfo(ZONA_HORARIA)).replace(tzinfo=None).isoformat(timespec="seconds")
+
+
+def corregir_fechas_a_hora_chile(zona_origen=None) -> int:
+    """
+    Una sola vez: los registros que ya estaban en el historial se guardaron con
+    la hora del servidor (UTC en PythonAnywhere); acá se pasan a hora de Chile.
+    En un equipo que ya está en hora de Chile (ej. local) no cambia nada. Las
+    fechas fijas de las importaciones (PRD) no se tocan. Devuelve cuántas filas cambió.
+    """
+    nombre = "corregir_fechas_a_hora_chile_2026-10-13"
+    cambiadas = 0
+    with _lock:
+        conn = _get_conn()
+        try:
+            if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (nombre,)).fetchone():
+                return 0
+            fijas = (IMPORTACION_REPUESTOS_FECHA, IMPORTACION_RANGOS_MODELOS_FECHA)
+            filas = conn.execute(
+                "SELECT id, fecha FROM historial_asignaciones WHERE fecha NOT IN (?, ?) AND (origen IS NULL OR origen != ?)",
+                (*fijas, ORIGEN_RANGOS_MODELOS),
+            ).fetchall()
+            for rid, fecha in filas:
+                nueva = _a_hora_chile(fecha, zona_origen)
+                if nueva != fecha:
+                    conn.execute("UPDATE historial_asignaciones SET fecha = ? WHERE id = ?", (nueva, rid))
+                    cambiadas += 1
+            for gid, fecha in conn.execute("SELECT id, fecha FROM generaciones").fetchall():
+                nueva = _a_hora_chile(fecha, zona_origen)
+                if nueva != fecha:
+                    conn.execute("UPDATE generaciones SET fecha = ? WHERE id = ?", (nueva, gid))
+            conn.execute("INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)", (nombre, ahora().isoformat(timespec="seconds")))
+            conn.commit()
+            return cambiadas
         finally:
             conn.close()

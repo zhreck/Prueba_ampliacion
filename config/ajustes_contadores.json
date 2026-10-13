@@ -50,6 +50,21 @@
       "id": "avance_zcam_5_2026-10-13",
       "contador": "zcam_material",
       "avanzar": 5
+    },
+    {
+      "id": "avance_zveh_3_2026-10-14",
+      "contador": "zveh_material",
+      "avanzar": 3
+    },
+    {
+      "id": "avance_zmaq_3_2026-10-14",
+      "contador": "zmaq_material",
+      "avanzar": 3
+    },
+    {
+      "id": "avance_zcam_3_2026-10-14",
+      "contador": "zcam_material",
+      "avanzar": 3
     }
   ]
 }

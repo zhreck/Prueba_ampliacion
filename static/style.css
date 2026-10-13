@@ -520,3 +520,12 @@ main.main-ancho { max-width: 1100px; }
   border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel);
 }
 .historial-buscar { flex-wrap: wrap; }
+
+/* Vista previa de una planilla guardada */
+.vp-hoja { margin: 26px 0 8px; font-size: 15px; }
+.vp-cuenta { color: var(--ink-dim); font-weight: 400; font-size: 13px; }
+.vp-scroll { max-height: 520px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.vp-tabla { font-size: 12px; margin: 0; width: auto; min-width: 100%; }
+.vp-tabla th, .vp-tabla td { padding: 6px 10px; white-space: nowrap; border-right: 1px solid #EDF0F4; }
+.vp-tabla th { position: static; text-transform: none; letter-spacing: 0; font-size: 12px; background: var(--accent-bg); color: var(--ink); }
+.vp-tabla tr.vp-marcada td { background: var(--warn-bg); }

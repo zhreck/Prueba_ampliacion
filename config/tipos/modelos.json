@@ -136,7 +136,8 @@
       "col_nivel2": "Nivel 2",
       "ancho_nivel2": 5,
       "col_nivel3": "Nivel 3",
-      "ancho_nivel3": 8
+      "ancho_nivel3": 8,
+      "sin_relleno_niveles_vacios": true
     }
   ],
   "validaciones": {

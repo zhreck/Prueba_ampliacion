@@ -21,6 +21,11 @@ app.secret_key = "cambiar-esta-clave-en-produccion"
 # Carga única de los correlativos de Repuestos que ya existen en PRD (queda
 # marcada como hecha en la base; si ya estaba importada no hace nada).
 try:
+    correlativo.corregir_fechas_a_hora_chile()
+except Exception as e:
+    app.logger.error("No se pudieron corregir las fechas a hora de Chile: %s", e)
+
+try:
     correlativo.importar_correlativos_repuestos()
 except Exception as e:  # nunca impedir que la app arranque por esto
     app.logger.error("No se pudo importar CorrelativosRepuestos.xlsx: %s", e)
@@ -344,7 +349,7 @@ def procesar():
                 df_pendientes.to_excel(writer, index=False, sheet_name="PENDIENTES")
 
     tipo_sufijo = "SAP" if generar_sap else "ampliado"
-    nombre_salida = f"{tipo_id}_{tipo_sufijo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    nombre_salida = f"{tipo_id}_{tipo_sufijo}_{correlativo.ahora().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     if generar_sap and asignaciones:
         # Copia permanente: se puede volver a bajar desde el Historial aunque
@@ -457,6 +462,51 @@ def historial_planilla(generacion_id):
     )
 
 
+FILAS_ENCABEZADO_PLANILLA = 5   # las planillas SAP traen 5 filas de encabezado (título, grupos, nombres, obligatorio, valor por defecto)
+MAX_FILAS_VISTA_PREVIA = 300
+
+
+@app.route("/historial/planilla/<int:generacion_id>/vista-previa")
+def historial_vista_previa(generacion_id):
+    """Vista previa en pantalla de una planilla guardada del historial (la misma
+    que se baja con 'Descargar planilla'), sin descargarla. Por defecto muestra
+    las filas del material desde el que se abrió (?m=número); ?ver=todo muestra
+    el principio de toda la planilla."""
+    correlativo.limpiar_planillas_vencidas()
+    planilla = correlativo.obtener_planilla(generacion_id)
+    if planilla is None:
+        abort(404)
+    ruta, nombre = planilla
+    material = request.args.get("m", "").strip()
+    ver_todo = request.args.get("ver") == "todo" or not material
+
+    wb = openpyxl.load_workbook(ruta, read_only=True, data_only=True)
+    hojas = []
+    try:
+        for ws in wb.worksheets:
+            filas = [["" if v is None else str(v) for v in fila] for fila in ws.iter_rows(values_only=True)]
+            encabezado, datos = filas[:FILAS_ENCABEZADO_PLANILLA], filas[FILAS_ENCABEZADO_PLANILLA:]
+            if not encabezado or ws.title == "PENDIENTES":  # hojas simples: sin bloque de encabezado
+                encabezado, datos = filas[:1], filas[1:]
+            total = len(datos)
+            marcadas = [any(c == material for c in f) for f in datos] if material else [False] * total
+            if ver_todo:
+                mostrar = list(zip(datos, marcadas))[:MAX_FILAS_VISTA_PREVIA]
+            else:
+                mostrar = [(f, True) for f, m in zip(datos, marcadas) if m][:MAX_FILAS_VISTA_PREVIA]
+            ancho = max((len(f) for f in filas), default=0)
+            hojas.append({
+                "nombre": ws.title, "encabezado": encabezado, "filas": mostrar, "total": total,
+                "mostradas": len(mostrar), "ancho": ancho,
+            })
+    finally:
+        wb.close()
+    return render_template(
+        "historial_vista_previa.html", nombre=nombre, hojas=hojas, material=material,
+        ver_todo=ver_todo, generacion_id=generacion_id, max_filas=MAX_FILAS_VISTA_PREVIA,
+    )
+
+
 @app.route("/historial/descargar")
 def historial_descargar():
     # Descarga en Excel lo mismo que muestra el historial: sin paginar y con el
@@ -482,7 +532,7 @@ def historial_descargar():
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=f"{nombre}_{datetime.now():%Y%m%d_%H%M}.xlsx",
+        download_name=f"{nombre}_{correlativo.ahora():%Y%m%d_%H%M}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
 
