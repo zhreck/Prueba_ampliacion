@@ -14,6 +14,7 @@
 
   <dl class="detalle-material">
     <dt>Tipo</dt><dd>{{ m.tipo }}</dd>
+    <dt>Filiales</dt><dd class="num">{{ m.filiales or "—" }}</dd>
     <dt>NPF</dt><dd class="num">{{ m.npf or "—" }}</dd>
     <dt>Fabricante</dt><dd class="num">{{ m.fabricante_codigo or "—" }}{% if m.fabricante_desc %} · {{ m.fabricante_desc }}{% endif %}</dd>
     <dt>Texto breve</dt><dd>{{ m.texto_breve or "—" }}</dd>
@@ -27,7 +28,7 @@
   {% if m.planilla_disponible %}
     <p class="lede">
       Este material salió en <strong>{{ m.planilla_nombre }}</strong>
-      ({{ m.planilla_total }} material{{ "es" if m.planilla_total != 1 else "" }}, generada el {{ m.planilla_fecha.replace("T", " ")[:16] }}).
+      ({{ m.planilla_total }} material{{ "es" if m.planilla_total != 1 else "" }}, generada el {{ m.planilla_fecha_fmt }}).
     </p>
     <div class="plantilla-links-grupo">
       <a class="plantilla-link-boton" href="{{ url_for('historial_planilla', generacion_id=m.generacion_id) }}">Descargar planilla</a>

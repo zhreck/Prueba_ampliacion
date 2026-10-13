@@ -513,3 +513,10 @@ main.main-ancho { max-width: 1100px; }
 .detalle-material { display: grid; grid-template-columns: 140px 1fr; gap: 10px 16px; margin: 18px 0 26px; font-size: 14px; }
 .detalle-material dt { color: var(--ink-dim); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; padding-top: 2px; }
 .detalle-material dd { margin: 0; }
+
+.filtro-fecha { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-dim); }
+.filtro-fecha input[type="date"] {
+  padding: 8px 10px; font: inherit; font-size: 13.5px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--panel);
+}
+.historial-buscar { flex-wrap: wrap; }

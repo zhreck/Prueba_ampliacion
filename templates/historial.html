@@ -15,13 +15,15 @@
 <div class="panel panel-tabla">
   <div class="panel-tabla-head">
     <h2>Historial de números asignados</h2>
-    <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita. {{ "{:,}".format(total).replace(",", ".") }} registros{% if buscar %} para «{{ buscar }}»{% endif %}.</p>
+    <p class="lede">Cada material queda registrado apenas se le asigna su número, para que nunca se repita. {{ "{:,}".format(total).replace(",", ".") }} registros{% if hay_filtro %} con el filtro aplicado{% endif %}.</p>
     <form class="historial-buscar" method="get" action="{{ url_for('historial') }}">
-      <input type="search" name="q" value="{{ buscar }}" placeholder="Buscar por número, NPF, fabricante, tipo…">
-      <button type="submit">Buscar</button>
-      {% if buscar %}<a class="plantilla-link" href="{{ url_for('historial') }}">Limpiar</a>{% endif %}
-      <a class="plantilla-link-boton historial-descarga" href="{{ url_for('historial_descargar', q=buscar) if buscar else url_for('historial_descargar') }}">
-        Descargar {% if buscar %}resultado filtrado{% else %}historial{% endif %} (Excel)
+      <input type="search" name="q" value="{{ buscar }}" placeholder="Buscar por número, NPF, fabricante, tipo, filial…">
+      <label class="filtro-fecha">Creado desde <input type="date" name="desde" value="{{ desde }}"></label>
+      <label class="filtro-fecha">hasta <input type="date" name="hasta" value="{{ hasta }}"></label>
+      <button type="submit">Filtrar</button>
+      {% if hay_filtro %}<a class="plantilla-link" href="{{ url_for('historial') }}">Limpiar</a>{% endif %}
+      <a class="plantilla-link-boton historial-descarga" href="{{ url_for('historial_descargar', q=buscar or None, desde=desde or None, hasta=hasta or None) }}">
+        Descargar {% if hay_filtro %}resultado filtrado{% else %}historial{% endif %} (Excel)
       </a>
     </form>
   </div>
@@ -31,6 +33,7 @@
       <tr>
         <th class="num">Número</th>
         <th>Tipo</th>
+        <th>Filiales</th>
         <th>NPF</th>
         <th>Fabricante</th>
         <th>Texto breve</th>
@@ -43,6 +46,7 @@
       <tr>
         <td class="num"><a class="num-link" href="{{ url_for('historial_material', registro_id=r.id) }}">{{ r.numero_asignado }}</a></td>
         <td>{{ r.tipo }}</td>
+        <td class="num">{{ r.filiales or "—" }}</td>
         <td class="num">{{ r.npf }}</td>
         <td class="num">{{ r.fabricante_codigo }}{% if r.fabricante_desc %} · {{ r.fabricante_desc }}{% endif %}</td>
         <td>{{ r.texto_breve }}</td>
@@ -50,16 +54,16 @@
         <td class="num">{{ r.hora_fmt }}</td>
       </tr>
       {% else %}
-      <tr><td colspan="7">{% if buscar %}Ningún registro coincide con la búsqueda.{% else %}Todavía no se ha generado ninguna ampliación.{% endif %}</td></tr>
+      <tr><td colspan="8">{% if hay_filtro %}Ningún registro coincide con el filtro.{% else %}Todavía no se ha generado ninguna ampliación.{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table>
   </div>
   {% if paginas > 1 %}
   <div class="paginacion">
-    {% if pagina > 1 %}<a href="{{ url_for('historial', p=pagina-1, q=buscar) }}">← Anterior</a>{% else %}<span></span>{% endif %}
+    {% if pagina > 1 %}<a href="{{ url_for('historial', p=pagina-1, q=buscar or None, desde=desde or None, hasta=hasta or None) }}">← Anterior</a>{% else %}<span></span>{% endif %}
     <span>Página {{ pagina }} de {{ paginas }}</span>
-    {% if pagina < paginas %}<a href="{{ url_for('historial', p=pagina+1, q=buscar) }}">Siguiente →</a>{% else %}<span></span>{% endif %}
+    {% if pagina < paginas %}<a href="{{ url_for('historial', p=pagina+1, q=buscar or None, desde=desde or None, hasta=hasta or None) }}">Siguiente →</a>{% else %}<span></span>{% endif %}
   </div>
   {% endif %}
 </div>

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import io
 import os
+import re
 import subprocess
 import uuid
 from datetime import datetime
@@ -23,6 +24,11 @@ try:
     correlativo.importar_correlativos_repuestos()
 except Exception as e:  # nunca impedir que la app arranque por esto
     app.logger.error("No se pudo importar CorrelativosRepuestos.xlsx: %s", e)
+
+try:
+    correlativo.importar_rangos_modelos()
+except Exception as e:
+    app.logger.error("No se pudo importar RangoModelos.xlsx: %s", e)
 
 try:
     correlativo.limpiar_planillas_vencidas()
@@ -380,6 +386,16 @@ def descargar(token):
     )
 
 
+def _filtros_historial():
+    """Filtros del historial desde la URL: ?q= texto, ?desde= y ?hasta= (AAAA-MM-DD).
+    Una fecha inválida se ignora."""
+    def _fecha(nombre):
+        valor = request.args.get(nombre, "").strip()
+        return valor if re.fullmatch(r"\d{4}-\d{2}-\d{2}", valor) else ""
+
+    return request.args.get("q", "").strip(), _fecha("desde"), _fecha("hasta")
+
+
 @app.route("/historial")
 def historial():
     # Un contador por rango SAP real: Modelos tiene un rango independiente por
@@ -398,18 +414,22 @@ def historial():
         r = correlativo.obtener_rango(nombre)
         estados.append((etiqueta, correlativo.estado_contador(nombre, r["min"], r["max"])))
 
-    buscar = request.args.get("q", "").strip()
+    buscar, desde, hasta = _filtros_historial()
     por_pagina = 100
-    total = correlativo.contar_historial(buscar)
+    total = correlativo.contar_historial(buscar, desde, hasta)
     paginas = max(1, -(-total // por_pagina))
     try:
         pagina = min(max(1, int(request.args.get("p", 1))), paginas)
     except ValueError:
         pagina = 1
-    registros = correlativo.historial(limit=por_pagina, offset=(pagina - 1) * por_pagina, buscar=buscar)
+    registros = correlativo.historial(
+        limit=por_pagina, offset=(pagina - 1) * por_pagina, buscar=buscar, desde=desde, hasta=hasta
+    )
     return render_template(
         "historial.html", estados=estados, registros=registros,
-        buscar=buscar, pagina=pagina, paginas=paginas, total=total,
+        buscar=buscar, desde=desde, hasta=hasta,
+        hay_filtro=bool(buscar or desde or hasta),
+        pagina=pagina, paginas=paginas, total=total,
     )
 
 
@@ -441,15 +461,15 @@ def historial_planilla(generacion_id):
 def historial_descargar():
     # Descarga en Excel lo mismo que muestra el historial: sin paginar y con el
     # mismo filtro de búsqueda (?q=) que tenga aplicado el usuario.
-    buscar = request.args.get("q", "").strip()
-    registros = correlativo.historial(limit=-1, buscar=buscar)  # LIMIT -1 = sin tope en SQLite
+    buscar, desde, hasta = _filtros_historial()
+    registros = correlativo.historial(limit=-1, buscar=buscar, desde=desde, hasta=hasta)  # LIMIT -1 = sin tope
 
     wb = openpyxl.Workbook(write_only=True)
     ws = wb.create_sheet("Historial")
-    ws.append(["Número", "Tipo", "NPF", "Código fabricante", "Fabricante", "Texto breve", "Fecha", "Hora"])
+    ws.append(["Número", "Tipo", "Filiales", "NPF", "Código fabricante", "Fabricante", "Texto breve", "Fecha", "Hora"])
     for r in registros:
         ws.append([
-            r["numero_asignado"], r["tipo"], r["npf"], r["fabricante_codigo"], r["fabricante_desc"],
+            r["numero_asignado"], r["tipo"], r["filiales"], r["npf"], r["fabricante_codigo"], r["fabricante_desc"],
             r["texto_breve"], r["fecha_fmt"], r["hora_fmt"],
         ])
     buffer = io.BytesIO()
@@ -457,7 +477,7 @@ def historial_descargar():
     buffer.seek(0)
 
     nombre = "historial_correlativos"
-    if buscar:
+    if buscar or desde or hasta:
         nombre += "_filtrado"
     return send_file(
         buffer,

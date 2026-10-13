@@ -35,6 +35,21 @@
       "id": "capacitacion_2026-10-07_zcam_material_30000310",
       "contador": "zcam_material",
       "siguiente": 30000310
+    },
+    {
+      "id": "avance_zveh_5_2026-10-13",
+      "contador": "zveh_material",
+      "avanzar": 5
+    },
+    {
+      "id": "avance_zmaq_5_2026-10-13",
+      "contador": "zmaq_material",
+      "avanzar": 5
+    },
+    {
+      "id": "avance_zcam_5_2026-10-13",
+      "contador": "zcam_material",
+      "avanzar": 5
     }
   ]
 }

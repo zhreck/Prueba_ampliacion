@@ -327,6 +327,7 @@ def aplicar_plantilla_sap(
                 tipo=f"{familia} · {tipo_material}",
                 texto_breve=str(primera_fila.get("TEXTO BREVE", "")),
                 fabricante_codigo=str(primera_fila.get("CODIGO FABRICANTE", primera_fila.get("FABRICANTE CODIGO", ""))),
+                filiales=_filiales_del_material(grupo),
                 tipo_material=str(primera_fila.get("TIPO MATERIAL REPUESTO", tipo_material)).strip() or tipo_material,
                 npf=str(primera_fila.get("NPF", "")).strip(),
                 fabricante_desc=fab_codigo_a_desc.get(str(primera_fila.get("CODIGO FABRICANTE", "")).strip(), "")
@@ -397,6 +398,16 @@ def aplicar_plantilla_sap(
     }
 
     return df_sap, metadatos
+
+
+def _filiales_del_material(grupo: pd.DataFrame) -> str:
+    """Filiales donde quedó ampliado un material, según los centros de sus filas
+    (VC02 -> VC00, VE01 -> VE00...; un material puede estar en más de una filial,
+    ej. MAXIMAL en VC00 y VE00). Ej. 'VC00, VE00'."""
+    if "CENTRO" not in grupo.columns:
+        return ""
+    centros = grupo["CENTRO"].astype(str).str.strip().str.upper()
+    return ", ".join(sorted({c[:2] + "00" for c in centros if len(c) >= 2}))
 
 
 def _validar_npf_no_generado(df_ampliado: pd.DataFrame, tipo_material: str) -> None:
