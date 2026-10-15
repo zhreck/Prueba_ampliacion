@@ -25,6 +25,15 @@ try:
 except Exception as e:
     app.logger.error("No se pudieron corregir las fechas a hora de Chile: %s", e)
 
+# El reinicio total va ANTES de las importaciones: deja solo lo que viene de los
+# archivos y las importaciones se vuelven a correr completas.
+try:
+    _reinicio = correlativo.reiniciar_correlativos_a_archivos()
+    if _reinicio:
+        app.logger.info("Reinicio de correlativos: %s", _reinicio)
+except Exception as e:
+    app.logger.error("No se pudo reiniciar los correlativos: %s", e)
+
 try:
     correlativo.importar_correlativos_repuestos()
 except Exception as e:  # nunca impedir que la app arranque por esto

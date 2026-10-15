@@ -340,55 +340,67 @@ def historial(limit: int = 100, offset: int = 0, buscar: str = "", desde: str = 
 
 
 CORRELATIVOS_REPUESTOS_PATH = Path(__file__).parent / "data" / "reference" / "Repuestos" / "CorrelativosRepuestos.xlsx"
-IMPORTACION_REPUESTOS_NOMBRE = "importar_correlativos_repuestos_prd_2026-10-06"
 IMPORTACION_REPUESTOS_FECHA = "2026-10-06T12:30:00"
+ORIGEN_CORRELATIVOS_REPUESTOS = "importacion_correlativos_repuestos"
 
 
 def importar_correlativos_repuestos() -> int:
     """
-    Carga UNA sola vez los correlativos de Repuestos que ya existen en PRD
-    (data/reference/Repuestos/CorrelativosRepuestos.xlsx): quedan en el
-    historial con fecha/hora fija (el Excel no trae cuándo se crearon) y el
-    contador de 'repuestos_material' avanza al último número del Excel, así
-    nunca se vuelve a asignar uno ya usado.
+    Carga al historial los correlativos de Repuestos que ya existen en PRD
+    (data/reference/Repuestos/CorrelativosRepuestos.xlsx): quedan con fecha/hora
+    fija (el Excel no trae cuándo se crearon), con sus filiales (columna
+    'Centros') y el contador de 'repuestos_material' avanza al último número
+    del Excel, así nunca se vuelve a asignar uno ya usado.
+
+    Si el archivo cambia, la próxima vez que arranca la app se borran los
+    registros de la importación anterior (origen='importacion_correlativos_repuestos')
+    y se importa de nuevo el archivo completo. Lo generado desde la app no se
+    borra: si tiene el mismo número que uno del archivo, se oculta y manda PRD.
 
     Las combinaciones NPF:Fabricante repetidas (cargas mal hechas, todas
     'NO UTILIZAR:...') se guardan igual para conservar su número, pero con
     oculto=1: no se muestran en el historial.
 
-    Devuelve cuántas filas se agregaron (0 si ya estaba importado o falta el archivo).
+    Devuelve cuántas filas importó (0 si el archivo no cambió o no existe).
     """
     if not CORRELATIVOS_REPUESTOS_PATH.exists():
         return 0
     import pandas as pd
 
+    migracion = f"importar_correlativos_repuestos_{hashlib.sha1(CORRELATIVOS_REPUESTOS_PATH.read_bytes()).hexdigest()[:12]}"
     df = pd.read_excel(CORRELATIVOS_REPUESTOS_PATH, dtype=str, keep_default_na=False)
     col_material, col_tipo, col_npf, col_fab, col_desc, col_clave, col_texto = df.columns[:7]
+    col_filiales = next((c for c in df.columns[7:] if str(c).strip().upper() in ("CENTROS", "FILIALES", "FILIAL")), None)
     df["_num"] = df[col_material].astype(int)
     df["_oculto"] = df[col_clave].str.strip().str.upper().duplicated(keep=False).astype(int)
+
+    def _filiales(valor: str) -> str:
+        return ", ".join(sorted({x.strip().upper() for x in valor.replace(";", ",").split(",") if x.strip()}))
+
     nombre_contador = "repuestos_material"
     rango = obtener_rango(nombre_contador)
 
     with _lock:
         conn = _get_conn()
         try:
-            if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (IMPORTACION_REPUESTOS_NOMBRE,)).fetchone():
+            if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (migracion,)).fetchone():
                 return 0
-            ya_registrados = {
-                r[0] for r in conn.execute(
-                    "SELECT numero_asignado FROM historial_asignaciones WHERE nombre_contador = ?", (nombre_contador,)
-                )
-            }
+            conn.execute("DELETE FROM historial_asignaciones WHERE origen = ?", (ORIGEN_CORRELATIVOS_REPUESTOS,))
+            conn.executemany(
+                "UPDATE historial_asignaciones SET oculto = 1 WHERE nombre_contador = ? AND numero_asignado = ? AND oculto = 0",
+                [(nombre_contador, int(n)) for n in df["_num"]],
+            )
             filas = [
                 (nombre_contador, int(f["_num"]), f"repuestos · {f[col_tipo].strip()}", f[col_texto].strip(), f[col_fab].strip(),
-                 IMPORTACION_REPUESTOS_FECHA, f[col_tipo].strip(), f[col_npf].strip(), f[col_desc].strip(), int(f["_oculto"]))
-                for _, f in df.iterrows() if int(f["_num"]) not in ya_registrados
+                 IMPORTACION_REPUESTOS_FECHA, f[col_tipo].strip(), f[col_npf].strip(), f[col_desc].strip(), int(f["_oculto"]),
+                 ORIGEN_CORRELATIVOS_REPUESTOS, _filiales(f[col_filiales]) if col_filiales else "")
+                for _, f in df.iterrows()
             ]
             conn.executemany(
                 """INSERT INTO historial_asignaciones
                    (nombre_contador, numero_asignado, tipo, texto_breve, fabricante_codigo, fecha,
-                    tipo_material, npf, fabricante_desc, oculto)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    tipo_material, npf, fabricante_desc, oculto, origen, filiales)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 filas,
             )
             maximo = int(df["_num"].max())
@@ -402,7 +414,7 @@ def importar_correlativos_repuestos() -> int:
                 conn.execute("UPDATE contadores SET ultimo_valor = ? WHERE nombre = ?", (maximo, nombre_contador))
             conn.execute(
                 "INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)",
-                (IMPORTACION_REPUESTOS_NOMBRE, ahora().isoformat(timespec="seconds")),
+                (migracion, ahora().isoformat(timespec="seconds")),
             )
             conn.commit()
             return len(filas)
@@ -764,5 +776,66 @@ def corregir_fechas_a_hora_chile(zona_origen=None) -> int:
             conn.execute("INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)", (nombre, ahora().isoformat(timespec="seconds")))
             conn.commit()
             return cambiadas
+        finally:
+            conn.close()
+
+
+def reiniciar_correlativos_a_archivos() -> str:
+    """
+    Reinicio total, una sola vez: deja en el historial EXCLUSIVAMENTE los
+    correlativos que vienen de los archivos entregados (RangoModelos.xlsx y
+    CorrelativosRepuestos.xlsx) y pone cada contador en el último número de
+    esos archivos. Borra todo lo demás: lo generado desde la app (pruebas,
+    capacitaciones), las planillas guardadas y los contadores sin archivo
+    (ZUSA y el interno de ampliaciones sin SAP, que vuelve a empezar).
+
+    Debe correr ANTES de las importaciones (que se repiten después).
+    Antes de borrar deja una copia de la base (correlativos.backup_reinicio_*.db).
+    Devuelve un texto con lo que hizo ('' si ya estaba hecho).
+    """
+    nombre = "reinicio_total_correlativos_2026-10-15"
+    with _lock:
+        conn = _get_conn()
+        try:
+            if conn.execute("SELECT 1 FROM migraciones WHERE nombre = ?", (nombre,)).fetchone():
+                return ""
+            if DB_PATH.exists():
+                copia = DB_PATH.with_name(f"correlativos.backup_reinicio_{ahora():%Y%m%d_%H%M%S}.db")
+                respaldo = sqlite3.connect(copia)
+                conn.backup(respaldo)
+                respaldo.close()
+            # Los registros importados de Repuestos antes de existir 'origen' no lo traen.
+            conn.execute(
+                "UPDATE historial_asignaciones SET origen = ? WHERE nombre_contador = 'repuestos_material' AND fecha = ? AND origen IS NULL",
+                (ORIGEN_CORRELATIVOS_REPUESTOS, IMPORTACION_REPUESTOS_FECHA),
+            )
+            borrados = conn.execute(
+                "DELETE FROM historial_asignaciones WHERE origen IS NULL OR origen NOT IN (?, ?)",
+                (ORIGEN_RANGOS_MODELOS, ORIGEN_CORRELATIVOS_REPUESTOS),
+            ).rowcount
+            conn.execute("UPDATE historial_asignaciones SET generacion_id = NULL")
+            for (archivo,) in conn.execute("SELECT archivo FROM generaciones WHERE archivo != ''").fetchall():
+                try:
+                    (GENERACIONES_DIR / archivo).unlink(missing_ok=True)
+                except OSError:
+                    pass
+            conn.execute("DELETE FROM generaciones")
+            # Las importaciones se vuelven a correr (después de este reinicio) para
+            # que los archivos queden completos aunque algún número estuviera ocupado.
+            conn.execute("DELETE FROM migraciones WHERE nombre LIKE 'importar_%'")
+            conn.execute("DELETE FROM contadores")
+            resumen = []
+            for contador, maximo in conn.execute(
+                "SELECT nombre_contador, MAX(numero_asignado) FROM historial_asignaciones GROUP BY nombre_contador"
+            ).fetchall():
+                rango = obtener_rango(contador)
+                conn.execute(
+                    "INSERT INTO contadores (nombre, ultimo_valor, range_min, range_max) VALUES (?, ?, ?, ?)",
+                    (contador, maximo, rango["min"], rango["max"]),
+                )
+                resumen.append(f"{contador}: siguiente número {maximo + 1}")
+            conn.execute("INSERT INTO migraciones (nombre, fecha) VALUES (?, ?)", (nombre, ahora().isoformat(timespec="seconds")))
+            conn.commit()
+            return f"{borrados} registro(s) borrados; " + "; ".join(sorted(resumen))
         finally:
             conn.close()
