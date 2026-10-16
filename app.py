@@ -81,6 +81,10 @@ def ampliar(tipo_id):
     # Maquinaria comparten una sola página de carga, con un botón de
     # plantilla por miembro pero un solo campo de archivo — el sistema
     # detecta solo qué tipo es al subirlo, ver engine.detectar_tipo_en_grupo).
+    seccion = engine.obtener_seccion(tipo_id)
+    if seccion:
+        return render_template("seccion_grupos.html", seccion=seccion)
+
     grupo = engine.obtener_grupo(tipo_id)
     if grupo:
         return render_template("index_grupo.html", grupo=grupo)
@@ -198,6 +202,7 @@ def procesar():
         return volver
 
     avisos = resultado_df.attrs.get("avisos", [])
+    usado = bool(engine.cargar_config(tipo_id).get("usado"))  # Modelos Usados: salen como ZUSA
 
     # Si se solicita generar formato SAP
     df_salida = resultado_df
@@ -254,7 +259,7 @@ def procesar():
                         avisos.append(
                             f"🔵 {tipo_material_sap} ({len(materiales)} material(es)): " + ", ".join(materiales)
                         )
-                    df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap)
+                    df_parte, meta_parte = salida_sap.aplicar_plantilla_sap(subset, tipo_material_sap, como_usado=usado)
                     if tipo_id == "repuestos":
                         df_parte = salida_sap.normalizar_df_sap(df_parte)
                     partes_sap_por_tipo[tipo_material_sap] = df_parte
@@ -325,7 +330,7 @@ def procesar():
             for fila in df_pendientes.itertuples(index=False):
                 ws_pend.append(list(fila))
         wb.save(buffer)
-    elif generar_sap and tipo_id in ("modelos_vehiculos_camiones", "modelos_maquinaria"):
+    elif generar_sap and tipo_id.startswith("modelos_"):
         # Mismo motivo que Repuestos arriba: el archivo real que Seba entregó
         # de ejemplo (Materiales - Tattersall Automotriz/Maco/Maquinarias.xlsx)
         # trae encabezados hasta la fila 5 y datos desde la 6 — antes de este
@@ -339,7 +344,7 @@ def procesar():
             wb,
             pd.concat(list(partes_sap_por_tipo.values()), ignore_index=True),
             tipos_en_archivo[0],
-            titulo=tipos_en_archivo[0] if len(tipos_en_archivo) == 1 else "MODELOS",
+            titulo="ZUSA" if usado else (tipos_en_archivo[0] if len(tipos_en_archivo) == 1 else "MODELOS"),
         )
         if df_pendientes is not None:
             ws_pend = wb.create_sheet(title="PENDIENTES")

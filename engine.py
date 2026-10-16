@@ -83,6 +83,7 @@ def listar_tipos() -> list[dict]:
     """
     resultado = []
     grupos_por_id: dict[str, dict] = {}
+    secciones_por_id: dict[str, dict] = {}
     for f in sorted(TIPOS_DIR.glob("*.json")):
         with open(f, encoding="utf-8") as fh:
             cfg = json.load(fh)
@@ -99,10 +100,30 @@ def listar_tipos() -> list[dict]:
                     "descripcion": cfg.get("grupo_descripcion", ""),
                     "tiene_diccionario": False,
                     "es_grupo": True,
+                    "seccion": cfg.get("seccion"),
                     "miembros": [],
                 }
                 grupos_por_id[grupo_id] = grupo
-                resultado.append(grupo)
+                seccion_id = cfg.get("seccion")
+                if seccion_id:
+                    # Un grupo dentro de una sección (ej. Modelos -> Nuevos / Usados)
+                    # no sale en el selector: lo muestra la página de su sección.
+                    seccion = secciones_por_id.get(seccion_id)
+                    if seccion is None:
+                        seccion = {
+                            "id": seccion_id,
+                            "nombre": cfg.get("seccion_nombre", seccion_id),
+                            "descripcion": cfg.get("seccion_descripcion", ""),
+                            "tiene_diccionario": False,
+                            "es_grupo": False,
+                            "es_seccion": True,
+                            "grupos": [],
+                        }
+                        secciones_por_id[seccion_id] = seccion
+                        resultado.append(seccion)
+                    seccion["grupos"].append(grupo)
+                else:
+                    resultado.append(grupo)
             grupo["miembros"].append({"id": cfg["id"], "nombre": cfg["nombre"]})
             continue
 
@@ -121,12 +142,24 @@ def listar_tipos() -> list[dict]:
     return resultado
 
 
+def obtener_seccion(seccion_id: str) -> dict | None:
+    """Devuelve la sección (ej. 'modelos', con sus grupos Nuevos/Usados) armada
+    por listar_tipos(), o None si seccion_id no es una sección conocida."""
+    for t in listar_tipos():
+        if t.get("es_seccion") and t["id"] == seccion_id:
+            return t
+    return None
+
+
 def obtener_grupo(grupo_id: str) -> dict | None:
     """Devuelve la tarjeta de grupo (con sus miembros) armada por
     listar_tipos(), o None si grupo_id no es un grupo conocido."""
     for t in listar_tipos():
         if t.get("es_grupo") and t["id"] == grupo_id:
             return t
+        for g in t.get("grupos", []):
+            if g["id"] == grupo_id:
+                return g
     return None
 
 
@@ -766,6 +799,8 @@ def _etiqueta_tipo_historial(tipo_id: str, fila_input) -> str:
         "modelos": "TIPO MATERIAL",
         "modelos_vehiculos_camiones": "TIPO MATERIAL",
         "modelos_maquinaria": "TIPO MATERIAL",
+        "modelos_usados_vehiculos_camiones": "TIPO MATERIAL",
+        "modelos_usados_maquinaria": "TIPO MATERIAL",
     }.get(tipo_id)
     tipo_sap = str(fila_input.get(col, "")).strip() if col else ""
     return f"{tipo_id} · {tipo_sap}" if tipo_sap else tipo_id
@@ -794,7 +829,29 @@ def _acotar_area_por_npf(ref_df, fila_input, cfg_area: dict, col_marca: str, val
     return acotado if not acotado.empty else ref_df
 
 
-def _validar_npf_unico(input_df: pd.DataFrame, cfg_npf: dict) -> None:
+def _validar_tipo_material(input_df: pd.DataFrame, cfg_tipo: dict) -> None:
+    """
+    Modelos Nuevos y Usados usan columnas idénticas, así que el único modo de
+    saber si se subió la planilla equivocada es el valor de 'TIPO MATERIAL'.
+    Usados solo acepta los valores de "permitidos" (ZUSA / USADOS); Nuevos
+    rechaza los de "prohibidos". Si alguna fila no cumple se rechaza el archivo
+    completo, antes de asignar ningún número.
+    """
+    col = cfg_tipo["columna"]
+    if col not in input_df.columns:
+        return
+    valores = input_df[col].fillna("").astype(str).str.strip().str.upper()
+    permitidos = [v.upper() for v in cfg_tipo.get("permitidos", [])]
+    prohibidos = [v.upper() for v in cfg_tipo.get("prohibidos", [])]
+    malos = valores[~valores.isin(permitidos)] if permitidos else valores[valores.isin(prohibidos)]
+    malos = malos[malos != ""]
+    if malos.empty:
+        return
+    encontrados = ", ".join(f"{v} ({n})" for v, n in malos.value_counts().items())
+    raise InputInvalidoError(cfg_tipo["mensaje"].format(col=col, encontrados=encontrados))
+
+
+def _validar_npf_unico(input_df: pd.DataFrame, cfg_npf: dict, usado: bool = False) -> None:
     """
     Modelos: un NPF no puede repetirse dentro del mismo tipo de material. El
     tipo de material SAP sale de la filial de la fila (ZVEH/ZCAM/ZMAQ, ver
@@ -807,7 +864,7 @@ def _validar_npf_unico(input_df: pd.DataFrame, cfg_npf: dict) -> None:
     if col not in input_df.columns:
         return
     claves = pd.DataFrame({
-        "tipo": input_df["FILIAL CODIGO"].map(lambda f: salida_sap.FILIAL_A_TIPO_MATERIAL.get(f, f)),
+        "tipo": input_df["FILIAL CODIGO"].map(lambda f: "ZUSA" if usado else salida_sap.FILIAL_A_TIPO_MATERIAL.get(f, f)),
         "npf": input_df[col].astype(str).str.strip().str.upper(),
     })
     claves = claves[claves["npf"] != ""]
@@ -831,8 +888,10 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
     """
     cfg = cargar_config(tipo_id)
     input_df = _leer_input(file_storage, cfg)
+    if cfg.get("tipo_material_valido"):
+        _validar_tipo_material(input_df, cfg["tipo_material_valido"])
     if cfg.get("npf_unico_por_tipo_material"):
-        _validar_npf_unico(input_df, cfg["npf_unico_por_tipo_material"])
+        _validar_npf_unico(input_df, cfg["npf_unico_por_tipo_material"], usado=bool(cfg.get("usado")))
     ref_df_completa = _cargar_referencia(
         cfg["reference_file"], cfg.get("reference_sheet"), cfg.get("reference_text_columns")
     )

@@ -263,6 +263,7 @@ def _normalizar_codigo_marca(valor) -> str:
 def aplicar_plantilla_sap(
     df_ampliado: pd.DataFrame,
     tipo_material: str,
+    como_usado: bool = False,
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     Convierte un DataFrame ampliado al formato SAP MM01 (151 columnas, en el orden
@@ -271,11 +272,24 @@ def aplicar_plantilla_sap(
     Args:
         df_ampliado: filas ya ampliadas a N centros (salida de engine.procesar()).
         tipo_material: ZVEH, ZMAQ, ZCAM o ZUSA (o ZRP1/2/3).
+        como_usado: Modelos Usados. `tipo_material` sigue siendo el de la filial
+            (ZVEH/ZCAM/ZMAQ: define la planilla y las reglas, que por ahora son las
+            mismas que las de los nuevos), pero el material sale como ZUSA y con
+            el correlativo del rango ZUSA.
 
     Returns:
         (DataFrame de 151 columnas, metadatos con pendientes/avisos)
     """
     plantilla = cargar_plantilla_sap(tipo_material)
+    if como_usado:
+        plantilla = dict(
+            plantilla,
+            tipo_material="ZUSA",
+            rango_correlativo_nombre="zusa_material",
+            defaults_confirmados_extra={**plantilla.get("defaults_confirmados_extra", {}), "Tipo material": "ZUSA"},
+        )
+        tipo_base = tipo_material
+        tipo_material = "ZUSA"
     header = cargar_header_151()
     primeras = _primeras_ocurrencias(header)
 
@@ -384,6 +398,7 @@ def aplicar_plantilla_sap(
 
     metadatos = {
         "tipo_material": tipo_material,
+        "tipo_base": tipo_base if como_usado else tipo_material,
         "bloque": bloque_key,
         "transaccion": TRANSACCION_VALOR,
         "total_filas": len(df_sap),

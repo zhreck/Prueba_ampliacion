@@ -30,10 +30,26 @@ Sitio publicado: https://zhreck.pythonanywhere.com/
 | ZVEH | Vehículos y motos | VF00 | 10.000.000 – 19.999.999 |
 | ZMAQ | Maquinarias | VC00, VD00, VE00 | 20.000.000 – 29.999.999 |
 | ZCAM | Camiones | VA00 | 30.000.000 – 39.999.999 |
-| ZUSA | Unidades usadas (aún no habilitado) | — | 40.000.000 – 49.999.999 |
+| ZUSA | Modelos Usados (vehículos, camiones y maquinaria) | las mismas de Modelos | 40.000.000 – 49.999.999 |
 | ZRP1 / ZRP2 / ZRP3 | Repuestos (normal / lote / serie), comparten rango | todas | 50.000.000 – 79.999.999 |
 
 Los rangos están en `correlativo.py` (`DEFAULT_RANGOS`).
+
+## Modelos Nuevos y Modelos Usados
+
+Al elegir **Modelos** se abre una página intermedia con dos opciones:
+
+- **Modelos Nuevos**: lo de siempre (ZVEH / ZCAM / ZMAQ según la filial).
+- **Modelos Usados**: cada material sale como **ZUSA** y toma su número del rango ZUSA
+  (40.000.000). Usa sus propias plantillas de input
+  (`data/reference/Unidades/Usados/`, con NPF terminado en `-U` y grupo de imputación
+  53), el **centro de beneficio de usados** (área "Usados, Retoma, y AF" de la hoja
+  `cebe3.0`, cebe `…05`, categoría de valoración 1201/1202/1200; no aplica la regla
+  de electromovilidad `…02`) y los mismos canales y planilla SAP de salida que los
+  nuevos. El NPF es único dentro de ZUSA, aparte de los de los nuevos. Cada lado
+  rechaza la planilla del otro según la columna `TIPO MATERIAL`: Usados solo acepta
+  `ZUSA` (Maquinaria) o `USADOS` (Vehículos y Camiones), y Nuevos rechaza esos valores.
+  Configs: `config/tipos/modelos_usados_*.json` (`"usado": true`).
 
 ## Reglas de negocio principales
 
@@ -155,7 +171,7 @@ en el selector de la página principal.
 
 ## Pendiente / ideas a futuro
 
-- ZUSA (unidades usadas): sin input ni plantilla todavía.
+- ZUSA (Modelos Usados): la planilla SAP de salida sigue siendo la de ZVEH/ZCAM/ZMAQ; falta una propia si negocio la entrega.
 - Rangos de correlativo reales de Modelos: hoy los contadores quedan en el último número de `RangoModelos.xlsx` (puede cambiar hasta el 02/11).
 - Autenticación básica si se despliega fuera de la red interna.
 - Si crece el uso simultáneo, evaluar pasar de SQLite a una base con servidor.

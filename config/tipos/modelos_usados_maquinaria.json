@@ -1,0 +1,252 @@
+{
+  "id": "modelos_usados_maquinaria",
+  "nombre": "Modelos Usados - Maquinaria",
+  "descripcion": "Ampliación de maquinaria usada (Tattersall Maquinarias/Multimaq/Industrial, ZMAQ) a los centros SAP correspondientes según marca y fabricante.",
+  "grupo": "modelos_usados",
+  "grupo_nombre": "Modelos Usados",
+  "grupo_descripcion": "Ampliación de vehículos, camiones y maquinaria usados (tipo de material ZUSA, rango 40.000.000, centro de beneficio de usados). El sistema reconoce solo qué tipo de planilla subiste.",
+  "_grupo_nota": "Comparte una sola página de carga con modelos_vehiculos_camiones.json (pedido de Seba: 2 botones nomás en el selector). Ver engine.listar_tipos()/obtener_grupo()/detectar_tipo_en_grupo().",
+  "input_sheet": "INPUT",
+  "plantilla_desde_archivo": {
+    "reference_file": "data/reference/Unidades/Usados/plantilla_modelos_usados_maquinaria.xlsx",
+    "sheet": "INPUT"
+  },
+  "_plantilla_desde_archivo_nota": "Mismo esquema que config/tipos/modelos_vehiculos_camiones.json (ver sus notas): Texto breve/NPF ya vienen calculados por fórmula de Excel, el motor solo lee el valor cacheado. Acá no hay Cilindrada/Tracción/Transmisión/Potencia batería -- en su lugar hay 'CATEGORIA' (tipo de máquina: GRUA, EXCAVADORA, RETROEXCAVADORA, ...), que tampoco usa el motor (solo alimenta la fórmula de Excel).",
+  "input_columns": [
+    "FILIAL CODIGO",
+    "TIPO MATERIAL",
+    "TEXTO BREVE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "MODELO",
+    "CATEGORIA",
+    "COMBUSTIBLE",
+    "GRUPO ARTICULO",
+    "NOMBRE JERARQUIA",
+    "NOMBRE MARCA",
+    "NOMBRE FABRICANTE",
+    "GRUPO IMPUTACION",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+  "validaciones_lista_extra": [
+    {
+      "columna": "FILIAL CODIGO",
+      "rango": "'Diccionario Filiales'!$B$2:$B$4"
+    },
+    {
+      "columna": "TIPO MATERIAL",
+      "rango": "NPF!$N$7"
+    },
+    {
+      "columna": "CATEGORIA",
+      "rango": "NPF!$G$4:$G$24"
+    },
+    {
+      "columna": "COMBUSTIBLE",
+      "rango": "NPF!$A$4:$A$10"
+    },
+    {
+      "columna": "GRUPO ARTICULO",
+      "rango": "'Grupo de Articulos'!$B$2"
+    },
+    {
+      "columna": "GRUPO IMPUTACION",
+      "rango": "'Diccionario GrupoImputacion'!$B$2"
+    },
+    {
+      "columna": "NOMBRE JERARQUIA",
+      "rango": "'Diccionario Jerarquías'!$F$2:$F$95"
+    }
+  ],
+  "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14) del archivo original plantilla_modelos_maquinarias.xlsx. GRUPO ARTICULO y GRUPO IMPUTACION quedan fijas a una sola opción (MAQ. INDUSTRIAL / Unidad Nueva) porque así venía el archivo original -- más angosto que lo que el diccionario completo permitiría (ver traduccion_nombres), pero es lo correcto para Maquinaria. NOMBRE JERARQUIA ver nota equivalente en modelos_vehiculos_camiones.json.",
+  "columnas_formula": [
+    "TEXTO BREVE CALCULADO (MAX 40)",
+    "NPF CALCULADO (MAX 30)",
+    "LARGO TEXTO BREVE (máx 40)",
+    "LARGO NPF (máx 30)"
+  ],
+  "text_columns": [
+    "NPF",
+    "JERARQUIA",
+    "MARCA CODIGO",
+    "FABRICANTE CODIGO",
+    "GRUPO IMPUTACION CODIGO"
+  ],
+  "renombrar_columnas": {
+    "TEXTO BREVE CALCULADO (MAX 40)": "TEXTO BREVE",
+    "NPF CALCULADO (MAX 30)": "NPF"
+  },
+  "reference_file": "data/reference/DiccionarioSAP.xlsx",
+  "reference_sheet": "cebe3.0",
+  "reference_text_columns": [
+    "COD_MARCA"
+  ],
+  "_reference_nota": "cebe3.0 cubre VC00/VD00/VE00 igual que Vehículos y Camiones cubre VF00/VA00.",
+  "reference_filter": {
+    "column": "AREA_LINEA_NEGOCIO",
+    "value": [
+      "Usados, Retoma, y AF"
+    ]
+  },
+  "_reference_filter_nota": "Pedido de Seba: los usados se amplían solo con el Centro de beneficio de usados (área 'Usados, Retoma, y AF' de DiccionarioSAP.xlsx hoja cebe3.0, cebe ...05). No aplica la regla por NPF de electromovilidad (...02): el NPF de usados termina en '-U'.",
+  "npf_unico_por_tipo_material": {
+    "_nota": "Pedido de Seba: si un NPF se repite dentro del mismo tipo de material (ZVEH/ZCAM/ZMAQ, que sale de la filial) no se genera la planilla y se muestra un error. Ver engine._validar_npf_unico.",
+    "columna_npf": "NPF"
+  },
+  "reglas_marca_amplia_a_filiales": [
+    {
+      "_nota": "Pedido de Seba: la marca MAXIMAL (180), aunque la sociedad del input diga 'Tattersall Maquinarias' (VC00), se amplía igual a los centros de VE00 (VE00 y VE01), además de los de VC00.",
+      "marca": "180",
+      "filiales_origen": [
+        "VC00"
+      ],
+      "filiales_extra": [
+        "VE00"
+      ]
+    },
+    {
+      "_nota": "Pedido de Seba: LIUGONG (150) con fabricante F0016 se amplía a los centros de VC00 (todos menos VC08) y de VD00, tanto si el input dice 'Tattersall Maquinarias' (VC00) como 'Tattersall Multimaq' (VD00). La matriz de disponibilidad (Centros_UN_RP.xlsx) tiene F0016 bloqueado en los centros VC; esta regla manda sobre ella.",
+      "marca": "150",
+      "fabricante": "F0016",
+      "filiales_origen": [
+        "VC00",
+        "VD00"
+      ],
+      "filiales_extra": [
+        "VC00",
+        "VD00"
+      ],
+      "centros_excluidos": [
+        "VC08"
+      ],
+      "ignorar_disponibilidad": true
+    }
+  ],
+  "_reglas_marca_amplia_nota": "Reglas solo de la planilla de Maquinarias. Se aplican cuando la filial del input está en 'filiales_origen' y coincide la marca (y el fabricante si se indica). Ver engine.procesar.",
+  "key_input": "FABRICANTE CODIGO",
+  "key_reference": "COD_FABRICANTE",
+  "fallback_value": "F9999",
+  "key_input_marca": "MARCA CODIGO",
+  "key_reference_marca": "COD_MARCA",
+  "fallback_value_marca": "280",
+  "filial_column": "COD_SOCIEDAD",
+  "output_columns_from_reference": [
+    "CENTRO",
+    "COD_CEBE",
+    "NOM_CODIGO_CEBE",
+    "COD_MARCA",
+    "CATVAL"
+  ],
+  "disponibilidad": {
+    "reference_file": "data/reference/Unidades/Centros_UN_RP.xlsx",
+    "sheet": "Unidades",
+    "valor_bloqueado": 0
+  },
+  "correlativo": {
+    "enabled": true,
+    "nombre": "material_global",
+    "column_name": "NUMERO MATERIAL",
+    "range_min": 1,
+    "range_max": 5000000
+  },
+  "_correlativo_nota": "Mismo contador compartido (solo clave de agrupación interna, no el número SAP final) que config/tipos/modelos_vehiculos_camiones.json -- ver su nota, aplica igual acá.",
+  "validaciones": {
+    "campos_obligatorios": [
+      "FILIAL CODIGO",
+      "TIPO MATERIAL",
+      "TEXTO BREVE",
+      "NPF",
+      "GRUPO ARTICULO",
+      "NOMBRE JERARQUIA",
+      "NOMBRE MARCA",
+      "NOMBRE FABRICANTE",
+      "GRUPO IMPUTACION"
+    ],
+    "texto_breve_columna": "TEXTO BREVE",
+    "texto_breve_max_len": 40
+  },
+  "normalizar_texto": true,
+  "traduccion_nombres": [
+    {
+      "tipo": "mapa",
+      "columna_origen": "FILIAL CODIGO",
+      "columna_destino": "FILIAL CODIGO",
+      "mapa": {
+        "Maco Tattersall": "VA00",
+        "Tattersall Maquinarias": "VC00",
+        "Tattersall Multimaq": "VD00",
+        "Tattersall Industrial y Maquinarias": "VE00",
+        "Tattersall Automotriz": "VF00",
+        "VA00": "VA00",
+        "VC00": "VC00",
+        "VD00": "VD00",
+        "VE00": "VE00",
+        "VF00": "VF00"
+      }
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE MARCA",
+      "columna_destino": "MARCA CODIGO",
+      "diccionario_file": "data/reference/Unidades/Usados/plantilla_modelos_usados_maquinaria.xlsx",
+      "diccionario_sheet": "Diccionario Marcas",
+      "col_nombre": "Descripción Marca",
+      "col_codigo": "Marca"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "NOMBRE FABRICANTE",
+      "columna_destino": "FABRICANTE CODIGO",
+      "diccionario_file": "data/reference/Unidades/Usados/plantilla_modelos_usados_maquinaria.xlsx",
+      "diccionario_sheet": "Diccionario Fabricantes",
+      "col_nombre": "Fabricante externo",
+      "col_codigo": "Fabricante"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO ARTICULO",
+      "columna_destino": "GRUPO ARTICULO",
+      "diccionario_file": "data/reference/Unidades/Usados/plantilla_modelos_usados_maquinaria.xlsx",
+      "diccionario_sheet": "Grupo de Articulos",
+      "col_nombre": "Descripción",
+      "col_codigo": "Grupo Artículo"
+    },
+    {
+      "tipo": "diccionario",
+      "columna_origen": "GRUPO IMPUTACION",
+      "columna_destino": "GRUPO IMPUTACION CODIGO",
+      "diccionario_file": "data/reference/Unidades/Usados/plantilla_modelos_usados_maquinaria.xlsx",
+      "diccionario_sheet": "Diccionario GrupoImputacion",
+      "col_nombre": "descripcion Grupo",
+      "col_codigo": "codigo"
+    },
+    {
+      "tipo": "jerarquia",
+      "columna_origen": "NOMBRE JERARQUIA",
+      "columna_destino": "JERARQUIA",
+      "diccionario_file": "data/reference/DiccionarioSAP.xlsx",
+      "diccionario_sheet": "jerarquia",
+      "col_texto_completo": "Texto Categoría",
+      "col_nivel1": "Nivel 1",
+      "ancho_nivel1": 5,
+      "col_nivel2": "Nivel 2",
+      "ancho_nivel2": 5,
+      "col_nivel3": "Nivel 3",
+      "ancho_nivel3": 8,
+      "sin_relleno_niveles_vacios": true
+    }
+  ],
+  "seccion": "modelos",
+  "seccion_nombre": "Modelos",
+  "seccion_descripcion": "Elige si vas a ampliar modelos nuevos o usados.",
+  "usado": true,
+  "_usado_nota": "Usados: mismo input, centros, canales y planilla SAP que el tipo nuevo equivalente (ZVEH/ZCAM/ZMAQ según la filial), pero el material sale como ZUSA y el correlativo del rango ZUSA (40.000.000). Pendiente: fórmula de NPF y planillas propias de usados (Seba las entrega después).",
+  "tipo_material_valido": {
+    "_nota": "Pedido de Seba: la planilla de Usados no puede aceptar una planilla de nuevos (TIPO MATERIAL ZMAQ/ZVEH/ZCAM, CAMIONES/VEHICULOS/MAQUINARIAS). Ver engine._validar_tipo_material.",
+    "columna": "TIPO MATERIAL",
+    "permitidos": [
+      "ZUSA"
+    ],
+    "mensaje": "Esta planilla no es de Modelos Usados: '{col}' trae {encontrados}. En Usados el tipo de material tiene que ser ZUSA. Descarga la plantilla desde Modelos Usados."
+  }
+}

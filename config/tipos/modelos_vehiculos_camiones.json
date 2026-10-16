@@ -2,29 +2,44 @@
   "id": "modelos_vehiculos_camiones",
   "nombre": "Modelos - Vehículos y Camiones",
   "descripcion": "Ampliación de vehículos y camiones nuevos (Tattersall Automotriz/ZVEH, Maco Tattersall/ZCAM) a los centros SAP correspondientes según marca y fabricante.",
-  "grupo": "modelos",
-  "grupo_nombre": "Modelos",
+  "grupo": "modelos_nuevos",
+  "grupo_nombre": "Modelos Nuevos",
   "grupo_descripcion": "Ampliación de vehículos, camiones y maquinaria nuevos a los centros SAP correspondientes. El sistema reconoce solo mirando el Excel qué tipo de planilla subiste.",
   "_grupo_nota": "Comparte una sola página de carga con modelos_maquinaria.json (pedido de Seba: 2 botones nomás en el selector). Ver engine.listar_tipos()/obtener_grupo()/detectar_tipo_en_grupo().",
   "_nota_general": "Reemplaza al input viejo de Modelos (plantilla_modelos.xlsx, retirado) solo para Vehículos y Camiones. Maquinaria (ZMAQ) y Usados (ZUSA) quedan pendientes de su propio input nuevo -- ver config/tipos/modelos.json (oculto mientras tanto).",
-
   "input_sheet": "INPUT",
   "plantilla_desde_archivo": {
     "reference_file": "data/reference/Unidades/plantilla_modelos_ZVEH_ZCAM.xlsx",
     "sheet": "INPUT"
   },
   "_plantilla_desde_archivo_nota": "El 'Texto breve' y el 'NPF' ya NO se calculan acá: el input real los trae calculados por fórmulas de Excel (LET/XLOOKUP/REDUCE) a partir de Modelo/Versión/Cilindrada/Combustible/Tracción/Transmisión/Potencia batería, y Excel deja el VALOR ya calculado guardado en la celda -- pandas lee ese valor cacheado, no la fórmula. El resto de las columnas (Modelo, Versión, Cilindrada, ...) solo existen para que esas fórmulas funcionen en Excel; el motor no las usa para nada.",
-
   "validaciones_lista_extra": [
-    { "columna": "FILIAL CODIGO", "rango": "'Diccionario Filiales'!$B$2:$B$4" },
-    { "columna": "TIPO MATERIAL", "rango": "NPF!$O$5:$O$6" },
-    { "columna": "COMBUSTIBLE", "rango": "NPF!$A$4:$A$10" },
-    { "columna": "TRACCION", "rango": "NPF!$J$4:$J$10" },
-    { "columna": "TRANSMISION", "rango": "NPF!$D$4:$D$7" },
-    { "columna": "NOMBRE JERARQUIA", "rango": "'Diccionario Jerarquías'!$F$2:$F$274" }
+    {
+      "columna": "FILIAL CODIGO",
+      "rango": "'Diccionario Filiales'!$B$2:$B$4"
+    },
+    {
+      "columna": "TIPO MATERIAL",
+      "rango": "NPF!$O$5:$O$6"
+    },
+    {
+      "columna": "COMBUSTIBLE",
+      "rango": "NPF!$A$4:$A$10"
+    },
+    {
+      "columna": "TRACCION",
+      "rango": "NPF!$J$4:$J$10"
+    },
+    {
+      "columna": "TRANSMISION",
+      "rango": "NPF!$D$4:$D$7"
+    },
+    {
+      "columna": "NOMBRE JERARQUIA",
+      "rango": "'Diccionario Jerarquías'!$F$2:$F$274"
+    }
   ],
   "_validaciones_lista_extra_nota": "Recuperadas de la validación real (tipo x14, que openpyxl descarta al abrir -- ver nota en engine._agregar_validaciones_desde_traduccion) del archivo original plantilla_modelos_ZVEH_ZCAM.xlsx. NOMBRE JERARQUIA apunta a la hoja 'Diccionario Jerarquías' BUNDLEADA en la plantilla (no a DiccionarioSAP.xlsx, que no viaja con el archivo descargable) -- el motor igual valida contra la tabla completa de DiccionarioSAP.xlsx al procesar, así que un texto que no calce ahí se rechaza con aviso en vez de generar algo mal.",
-
   "columnas_formula": [
     "TEXTO BREVE CALCULADO (MAX 40)",
     "NPF CALCULADO (MAX 30)",
@@ -32,7 +47,6 @@
     "LARGO NPF (máx 30)"
   ],
   "_columnas_formula_nota": "Estas 4 columnas traen fórmula en las 200 filas del archivo real (no solo en la fila de ejemplo) -- generar_plantilla_vacia() ya NO las borra al armar la plantilla descargable, para que el usuario vea en vivo cómo queda el Texto breve/NPF a medida que llena Modelo/Versión/Combustible/etc. en cada fila. La hoja además queda protegida (Protect Sheet) dejando editables solo las columnas que no son de fórmula, para que no se puedan borrar/pisar por accidente.",
-
   "input_columns": [
     "FILIAL CODIGO",
     "TIPO MATERIAL",
@@ -53,7 +67,6 @@
     "LARGO TEXTO BREVE (máx 40)",
     "LARGO NPF (máx 30)"
   ],
-
   "text_columns": [
     "NPF",
     "JERARQUIA",
@@ -61,15 +74,12 @@
     "FABRICANTE CODIGO",
     "GRUPO IMPUTACION CODIGO"
   ],
-
   "renombrar_columnas": {
     "TEXTO BREVE CALCULADO (MAX 40)": "TEXTO BREVE",
     "NPF CALCULADO (MAX 30)": "NPF"
   },
-
   "normalizar_texto": true,
   "_normalizar_texto_nota": "Igual que Repuestos: todo el texto de salida queda sin espacios sobrantes, en MAYÚSCULAS y sin tildes (conserva la Ñ) -- por si el Excel de origen no recalculó TEXTO BREVE/NPF con el mismo casing que espera SAP.",
-
   "reference_file": "data/reference/DiccionarioSAP.xlsx",
   "reference_sheet": "cebe3.0",
   "reference_text_columns": [
@@ -78,22 +88,27 @@
   "_reference_nota": "cebe3.0 reemplaza a data/reference/Unidades/centros_ampliacion.xlsx (más completo y con algunas correcciones -- ver diffs confirmados con Seba). Cubre VF00/VA00/VC00/VD00/VE00 (columna COD_SOCIEDAD).",
   "reference_filter": {
     "column": "AREA_LINEA_NEGOCIO",
-    "value": ["Vta. Unidades Nuevas", "Vta. Electromovilidad Unidades Nuevas"]
+    "value": [
+      "Vta. Unidades Nuevas",
+      "Vta. Electromovilidad Unidades Nuevas"
+    ]
   },
   "npf_unico_por_tipo_material": {
     "_nota": "Pedido de Seba: si un NPF se repite dentro del mismo tipo de material (ZVEH/ZCAM/ZMAQ, que sale de la filial) no se genera la planilla y se muestra un error. Ver engine._validar_npf_unico.",
     "columna_npf": "NPF"
   },
-
   "area_por_npf": {
     "_nota": "Pedido de Seba (igual que Maquinarias): si el NPF termina en BEV, PHEV o MHEV va el Centro de beneficio de electromovilidad (...02), cualquier otro NPF el de 'Vta. Unidades Nuevas' (...01). Ver engine._acotar_area_por_npf.",
     "columna_npf": "NPF",
-    "sufijos": ["BEV", "PHEV", "MHEV"],
+    "sufijos": [
+      "BEV",
+      "PHEV",
+      "MHEV"
+    ],
     "columna_area": "AREA_LINEA_NEGOCIO",
     "area_si_termina": "Vta. Electromovilidad Unidades Nuevas",
     "area_si_no": "Vta. Unidades Nuevas"
   },
-
   "key_input": "FABRICANTE CODIGO",
   "key_reference": "COD_FABRICANTE",
   "fallback_value": "F9999",
@@ -102,7 +117,6 @@
   "key_reference_marca": "COD_MARCA",
   "fallback_value_marca": "280",
   "filial_column": "COD_SOCIEDAD",
-
   "output_columns_from_reference": [
     "CENTRO",
     "COD_CEBE",
@@ -111,14 +125,12 @@
     "CATVAL"
   ],
   "_cod_marca_nota": "COD_MARCA y CATVAL salen de la tabla de referencia (ya validada por Centro+Marca+Fabricante), no de 'MARCA CODIGO' tal cual tipeó el usuario -- ese campo ahora SÍ se usa para buscar (key_input_marca), pero el valor que se amplía a SAP es siempre el de la fila de referencia que matcheó. CATVAL reemplaza a config/categoria_valoracion.json para este tipo: ya viene resuelto por fila en cebe3.0, sin la ambigüedad vieja de 'OTRAS MARCAS podría ser auto o moto' (ver docs/categoria_valoracion_pendientes.md) porque ahora se distingue por marca antes de llegar al fabricante comodín.",
-
   "_disponibilidad_nota": "Misma matriz que la de Modelos vieja (Centro x Fabricante, hoja 'Unidades' de Centros_UN_RP.xlsx) -- no depende de marca, no hace falta una nueva.",
   "disponibilidad": {
     "reference_file": "data/reference/Unidades/Centros_UN_RP.xlsx",
     "sheet": "Unidades",
     "valor_bloqueado": 0
   },
-
   "correlativo": {
     "enabled": true,
     "nombre": "material_global",
@@ -127,7 +139,6 @@
     "range_max": 5000000
   },
   "_correlativo_nota": "Este número NO es el número de material SAP final -- es solo la clave que agrupa, dentro de esta ampliación, qué filas (un centro cada una) pertenecen al mismo material original (igual que ya hacía config/tipos/modelos.json con este mismo contador 'material_global'). El número SAP real (rango ZVEH 10000000-19999999 para VF00, ZCAM 30000000-39999999 para VA00) lo asigna salida_sap.aplicar_plantilla_sap() recién al generar el formato SAP, vía 'rango_correlativo_nombre' en config/salida_sap/zveh.json / zcam.json -- ver salida_sap.py:314 (agrupa por este NUMERO MATERIAL y pide uno nuevo del rango real por grupo).",
-
   "validaciones": {
     "campos_obligatorios": [
       "FILIAL CODIGO",
@@ -143,7 +154,6 @@
     "texto_breve_columna": "TEXTO BREVE",
     "texto_breve_max_len": 40
   },
-
   "traduccion_nombres": [
     {
       "tipo": "mapa",
@@ -218,5 +228,17 @@
       "sin_relleno_niveles_vacios": true,
       "_nota": "Antes salía de la hoja 'Diccionario Jerarquías' de plantilla_modelos.xlsx (~350 filas, solo vehículos). Ahora sale de DiccionarioSAP.xlsx hoja 'jerarquia' (~2096 filas, cubre Repuestos Y Unidades en una sola tabla maestra) -- verificado contra el ejemplo real: 'DONGFENG AUT. UNIDAD - GASOLINA - PICK-UP' -> '000170000200000003' calza exacto con Materiales - Tattersall Automotriz.xlsx."
     }
-  ]
+  ],
+  "seccion": "modelos",
+  "seccion_nombre": "Modelos",
+  "seccion_descripcion": "Elige si vas a ampliar modelos nuevos o usados.",
+  "tipo_material_valido": {
+    "_nota": "Una planilla de Modelos Usados (TIPO MATERIAL ZUSA / USADOS) no se acepta en Modelos Nuevos. Ver engine._validar_tipo_material.",
+    "columna": "TIPO MATERIAL",
+    "prohibidos": [
+      "ZUSA",
+      "USADOS"
+    ],
+    "mensaje": "Esta planilla es de Modelos Usados ('{col}' trae {encontrados}), pero estás en Modelos Nuevos. Súbela desde Modelos Usados."
+  }
 }
