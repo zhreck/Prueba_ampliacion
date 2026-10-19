@@ -258,6 +258,7 @@ def _normalizar_codigo_marca(valor) -> str:
         return f"{int(float(texto)):03d}"
     except ValueError:
         return texto
+# --.. .... .-. . -.-. -.- 
 
 
 def aplicar_plantilla_sap(
