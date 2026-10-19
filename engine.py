@@ -24,6 +24,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.styles import Protection
 
 import correlativo
+# --.. .... .-. . -.-. -.- 
 
 BASE_DIR = Path(__file__).parent
 TIPOS_DIR = BASE_DIR / "config" / "tipos"
@@ -978,6 +979,11 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             return False
         return all(e == bloqueado_valor for e in estados)
 
+    def _fab_txt(codigo) -> str:
+        """'F0021 - LIFM' (código + nombre, si el diccionario lo conoce)."""
+        desc = correlativo.descripcion_fabricante(str(codigo).strip())
+        return f"{codigo} - {desc}" if desc else str(codigo)
+
     for _, fila_input in input_df.iterrows():
         valor_key = fila_input[key_input]
 
@@ -1031,14 +1037,14 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             # sería disfrazar un fabricante conocido-pero-no-habilitado como
             # "todas/otras marcas".
             avisos.append(
-                f"Fabricante '{valor_key}' no habilitado para {', '.join(sorted(set(centros_excluidos)))} "
+                f"Fabricante '{_fab_txt(valor_key)}' no habilitado para {', '.join(sorted(set(centros_excluidos)))} "
                 f"(matriz de disponibilidad) — fila omitida."
             )
             continue
 
         if matches.empty and _fabricante_bloqueado_en_toda_la_filial(ref_df, valor_key):
             avisos.append(
-                f"Fabricante '{valor_key}' no habilitado en ningún centro de "
+                f"Fabricante '{_fab_txt(valor_key)}' no habilitado en ningún centro de "
                 f"'{filial_fila if filial_column else ''}' (matriz de disponibilidad) — fila omitida."
             )
             continue
@@ -1050,12 +1056,12 @@ def procesar(tipo_id: str, file_storage) -> pd.DataFrame:
             uso_fallback = True
 
         if matches.empty:
-            avisos.append(f"Fabricante '{valor_key}' no encontrado — fila omitida.")
+            avisos.append(f"Fabricante '{_fab_txt(valor_key)}' no encontrado — fila omitida.")
             continue
 
         if centros_excluidos:
             avisos.append(
-                f"Fabricante '{valor_key}': se excluyeron {', '.join(sorted(set(centros_excluidos)))} "
+                f"Fabricante '{_fab_txt(valor_key)}': se excluyeron {', '.join(sorted(set(centros_excluidos)))} "
                 f"(no habilitados), se amplió al resto."
             )
 

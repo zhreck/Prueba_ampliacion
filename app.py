@@ -16,6 +16,7 @@ import correlativo
 import salida_sap
 
 app = Flask(__name__)
+# firmado por: Zhreck
 app.secret_key = "cambiar-esta-clave-en-produccion"
 
 # Carga única de los correlativos de Repuestos que ya existen en PRD (queda
@@ -280,8 +281,8 @@ def procesar():
                     )
                 if npf_duplicados:
                     avisos.append(
-                        f"🔵 NPF:Fabricante ya existente ({len(npf_duplicados)}): se dejó el correlativo en el EAN "
-                        f"(Número de artículo Europeo): " + ", ".join(dict.fromkeys(npf_duplicados))
+                        f"🔵 Material ya creado en SAP ({len(npf_duplicados)}): la combinación NPF:Fabricante ya existe, "
+                        f"por lo que se dejó el correlativo en el EAN (Número de artículo Europeo). Materiales (NPF:Fabricante): " + ", ".join(dict.fromkeys(npf_duplicados))
                     )
 
                 if marcas_sin_categoria:

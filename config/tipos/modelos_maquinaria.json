@@ -108,12 +108,14 @@
   },
   "reglas_marca_amplia_a_filiales": [
     {
-      "_nota": "Pedido de Seba: la marca MAXIMAL (180), aunque la sociedad del input diga 'Tattersall Maquinarias' (VC00), se amplía igual a los centros de VE00 (VE00 y VE01), además de los de VC00.",
+      "_nota": "Pedido de Seba: la marca MAXIMAL (180) se amplía siempre a los centros de VC00 y de VE00 (VE00 y VE01), tanto si la sociedad del input es 'Tattersall Maquinarias' (VC00) como 'Tattersall Industrial y Maquinarias' (VE00).",
       "marca": "180",
       "filiales_origen": [
-        "VC00"
+        "VC00",
+        "VE00"
       ],
       "filiales_extra": [
+        "VC00",
         "VE00"
       ]
     },
